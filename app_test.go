@@ -712,3 +712,28 @@ func TestDateNamesComplete(t *testing.T) {
 		}
 	}
 }
+
+func TestAllLanguagesRender(t *testing.T) {
+	c := newClient(t)
+	loc := c.do("POST", "/create", url.Values{"title": {"T"}, "kind": {"date"}, "date": {"2026-12-01", "2026-12-02"}, "time": {"", "09:00"}}).Header().Get("Location")
+	id := strings.Split(loc, "/")[2]
+	for _, l := range supportedLangs {
+		for _, p := range []string{"/", "/p/" + id, loc, "/nope"} {
+			w := c.do("GET", p+"?lang="+l, nil)
+			body := w.Body.String()
+			if w.Code != 200 && w.Code != 404 {
+				t.Errorf("%s %s: status %d", l, p, w.Code)
+			}
+			tag := strings.ReplaceAll(l, "_", "-")
+			if !strings.Contains(body, `<html lang="`+tag+`"`) {
+				t.Errorf("%s %s: wrong html lang", l, p)
+			}
+			if (l == "ar" || l == "he") != strings.Contains(body, `dir="rtl"`) {
+				t.Errorf("%s %s: wrong text direction", l, p)
+			}
+			if strings.Contains(body, "{{") || strings.Contains(body, "%!") {
+				t.Errorf("%s %s: template/format error in output", l, p)
+			}
+		}
+	}
+}

@@ -28,6 +28,9 @@
 </main>
 <footer>
   <span>{{.T "footer_note"}}</span>
+  <nav class="footlangs" aria-label="{{.T "language"}}">
+    {{range .Langs}}<a href="{{$.Path}}?lang={{.}}" hreflang="{{.}}" lang="{{.}}"{{if eq . $.Lang}} aria-current="true"{{end}}>{{$.LangName .}}</a>{{end}}
+  </nav>
 </footer>
 </body>
 </html>{{end}}
