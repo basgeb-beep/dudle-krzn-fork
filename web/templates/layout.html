@@ -1,0 +1,42 @@
+{{define "layout"}}<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<title>{{if .Title}}{{.Title}} · {{end}}Dudle</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <a class="brand" href="/"><img src="/static/favicon.svg" alt="" width="28" height="28"><span>Dudle</span></a>
+  <span class="tagline">{{.T "tagline"}}</span>
+  <a class="btn small ghost" href="/">{{.T "new_poll"}}</a>
+</header>
+<main id="main">
+{{template "content" .}}
+</main>
+<footer>
+  <span>{{.T "footer_note"}}</span>
+  <nav aria-label="{{.T "language"}}">
+    {{range .Langs}}<a href="{{$.Path}}?lang={{.}}" hreflang="{{.}}"{{if eq . $.Lang}} aria-current="true"{{end}}>{{$.LangName .}}</a>{{end}}
+  </nav>
+</footer>
+</body>
+</html>{{end}}
+
+{{define "datepicker"}}
+<div class="datepicker" data-initial="{{.Init}}"
+     data-none="{{.T "dp_none"}}" data-time="{{.T "dp_time"}}" data-remove="{{.T "dp_remove"}}"
+     data-prev="{{.T "cal_prev"}}" data-next="{{.T "cal_next"}}">
+  <div class="cal" hidden></div>
+  <ul class="picked"></ul>
+  <div class="nojs-dates">
+    {{range $i := .Rows}}<div class="row"><input type="date" name="date" aria-label="{{$.T "f_dates"}}"><input type="time" name="time" aria-label="{{$.T "dp_time"}}"></div>{{end}}
+  </div>
+</div>
+{{end}}

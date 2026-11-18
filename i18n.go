@@ -1,0 +1,217 @@
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"strings"
+)
+
+var supportedLangs = []string{"en", "de"}
+
+var langNames = map[string]string{"en": "English", "de": "Deutsch"}
+
+func isSupported(l string) bool {
+	for _, s := range supportedLangs {
+		if s == l {
+			return true
+		}
+	}
+	return false
+}
+
+// detectLang picks the language from ?lang, the cookie, or Accept-Language.
+func detectLang(r *http.Request) string {
+	if l := r.URL.Query().Get("lang"); isSupported(l) {
+		return l
+	}
+	if c, err := r.Cookie("lang"); err == nil && isSupported(c.Value) {
+		return c.Value
+	}
+	for _, part := range strings.Split(r.Header.Get("Accept-Language"), ",") {
+		tag := strings.ToLower(strings.TrimSpace(strings.SplitN(part, ";", 2)[0]))
+		if i := strings.IndexAny(tag, "-_"); i > 0 {
+			tag = tag[:i]
+		}
+		if isSupported(tag) {
+			return tag
+		}
+	}
+	return "en"
+}
+
+func tr(lang, key string, args ...any) string {
+	m, ok := messages[lang][key]
+	if !ok {
+		m, ok = messages["en"][key]
+	}
+	if !ok {
+		return key
+	}
+	if len(args) > 0 {
+		return fmt.Sprintf(m, args...)
+	}
+	return m
+}
+
+var messages = map[string]map[string]string{
+	"en": {
+		"tagline":        "Find a date. Without the chaos.",
+		"new_poll":       "New poll",
+		"footer_note":    "Open source scheduling – no ads, no tracking.",
+		"language":       "Language",
+		"home_h1":        "Find the best date, together.",
+		"home_lead":      "Create a poll, share the link and see at a glance what works for everyone. No sign-up needed.",
+		"f_title":        "Title",
+		"f_title_ph":     "e.g. Team dinner",
+		"f_desc":         "Description (optional)",
+		"f_desc_ph":      "Where, what, anything participants should know …",
+		"f_kind":         "What do you want to schedule?",
+		"kind_date":      "Dates",
+		"kind_text":      "Free choices",
+		"f_dates":        "Pick the possible dates",
+		"f_dates_hint":   "Click days in the calendar. Add a time if you need one.",
+		"f_choices":      "Options, one per line",
+		"f_choices_ph":   "Pizza\nSushi\nBurgers",
+		"f_maybe":        "Allow “if need be” answers",
+		"create":         "Create poll",
+		"my_polls":       "Your polls on this device",
+		"cal_prev":       "Previous month",
+		"cal_next":       "Next month",
+		"dp_none":        "No dates selected yet.",
+		"dp_time":        "Time (optional)",
+		"dp_remove":      "Remove",
+		"participants":   "Participants",
+		"your_name":      "Your name",
+		"save":           "Save",
+		"cancel":         "Cancel",
+		"edit":           "Edit",
+		"best_option":    "Best option",
+		"best_options":   "Best options",
+		"no_votes":       "No votes yet – be the first!",
+		"closed":         "Closed",
+		"closed_note":    "This poll is closed. Votes can no longer be changed.",
+		"share":          "Share this poll",
+		"copy":           "Copy",
+		"copied":         "Copied!",
+		"comments":       "Comments",
+		"comment_ph":     "Write a comment …",
+		"post":           "Post",
+		"no_comments":    "No comments yet.",
+		"export_csv":     "Export CSV",
+		"feed":           "Atom feed",
+		"v_yes":          "Yes",
+		"v_maybe":        "If need be",
+		"v_no":           "No",
+		"total":          "Total",
+		"admin_title":    "Manage poll",
+		"admin_intro":    "Keep this page’s address private – anyone who has it can manage the poll.",
+		"link_public":    "Link for participants",
+		"link_admin":     "Admin link (private)",
+		"settings":       "Settings",
+		"close_poll":     "Close poll (no more votes)",
+		"options":        "Options",
+		"add_options":    "Add options",
+		"delete":         "Delete",
+		"danger":         "Danger zone",
+		"delete_poll":    "Delete poll permanently",
+		"delete_poll_p":  "This removes the poll, all votes and comments. It cannot be undone.",
+		"confirm_delete": "Really delete this?",
+		"saved":          "Saved.",
+		"open_poll":      "Open poll",
+		"err_title":      "Please enter a title (up to 120 characters).",
+		"err_desc":       "The description is too long.",
+		"err_options":    "Please add at least one option.",
+		"err_too_many":   "Too many options (maximum 60).",
+		"err_date":       "One of the dates is invalid.",
+		"err_label":      "An option is too long (maximum 100 characters).",
+		"err_name":       "Please enter your name (up to 60 characters).",
+		"err_name_taken": "This name is already taken. Use the edit button next to it to change that vote.",
+		"err_closed":     "This poll is closed.",
+		"err_last":       "The last option cannot be removed.",
+		"err_comment":    "Please enter your name and a comment (up to 1000 characters).",
+		"err_generic":    "Something went wrong. Please try again.",
+		"not_found_h":    "Page not found",
+		"not_found_p":    "This poll doesn’t exist (anymore). Polls are removed after a period of inactivity.",
+		"back_home":      "Back to start",
+	},
+	"de": {
+		"tagline":        "Termine finden. Ohne Chaos.",
+		"new_poll":       "Neue Umfrage",
+		"footer_note":    "Open-Source-Terminfindung – keine Werbung, kein Tracking.",
+		"language":       "Sprache",
+		"home_h1":        "Gemeinsam den besten Termin finden.",
+		"home_lead":      "Umfrage erstellen, Link teilen und auf einen Blick sehen, was für alle passt. Ohne Anmeldung.",
+		"f_title":        "Titel",
+		"f_title_ph":     "z. B. Teamessen",
+		"f_desc":         "Beschreibung (optional)",
+		"f_desc_ph":      "Wo, was, alles was die Teilnehmenden wissen sollten …",
+		"f_kind":         "Was möchtest du planen?",
+		"kind_date":      "Termine",
+		"kind_text":      "Freie Auswahl",
+		"f_dates":        "Mögliche Termine auswählen",
+		"f_dates_hint":   "Klicke Tage im Kalender an. Bei Bedarf kannst du eine Uhrzeit ergänzen.",
+		"f_choices":      "Optionen, eine pro Zeile",
+		"f_choices_ph":   "Pizza\nSushi\nBurger",
+		"f_maybe":        "Antwort „Zur Not“ erlauben",
+		"create":         "Umfrage erstellen",
+		"my_polls":       "Deine Umfragen auf diesem Gerät",
+		"cal_prev":       "Voriger Monat",
+		"cal_next":       "Nächster Monat",
+		"dp_none":        "Noch keine Termine ausgewählt.",
+		"dp_time":        "Uhrzeit (optional)",
+		"dp_remove":      "Entfernen",
+		"participants":   "Teilnehmende",
+		"your_name":      "Dein Name",
+		"save":           "Speichern",
+		"cancel":         "Abbrechen",
+		"edit":           "Bearbeiten",
+		"best_option":    "Beste Option",
+		"best_options":   "Beste Optionen",
+		"no_votes":       "Noch keine Stimmen – mach den Anfang!",
+		"closed":         "Geschlossen",
+		"closed_note":    "Diese Umfrage ist geschlossen. Stimmen können nicht mehr geändert werden.",
+		"share":          "Umfrage teilen",
+		"copy":           "Kopieren",
+		"copied":         "Kopiert!",
+		"comments":       "Kommentare",
+		"comment_ph":     "Kommentar schreiben …",
+		"post":           "Senden",
+		"no_comments":    "Noch keine Kommentare.",
+		"export_csv":     "CSV exportieren",
+		"feed":           "Atom-Feed",
+		"v_yes":          "Ja",
+		"v_maybe":        "Zur Not",
+		"v_no":           "Nein",
+		"total":          "Summe",
+		"admin_title":    "Umfrage verwalten",
+		"admin_intro":    "Halte die Adresse dieser Seite geheim – wer sie kennt, kann die Umfrage verwalten.",
+		"link_public":    "Link für Teilnehmende",
+		"link_admin":     "Admin-Link (privat)",
+		"settings":       "Einstellungen",
+		"close_poll":     "Umfrage schließen (keine Stimmen mehr)",
+		"options":        "Optionen",
+		"add_options":    "Optionen hinzufügen",
+		"delete":         "Löschen",
+		"danger":         "Gefahrenzone",
+		"delete_poll":    "Umfrage endgültig löschen",
+		"delete_poll_p":  "Entfernt die Umfrage samt allen Stimmen und Kommentaren. Das lässt sich nicht rückgängig machen.",
+		"confirm_delete": "Wirklich löschen?",
+		"saved":          "Gespeichert.",
+		"open_poll":      "Umfrage öffnen",
+		"err_title":      "Bitte gib einen Titel ein (maximal 120 Zeichen).",
+		"err_desc":       "Die Beschreibung ist zu lang.",
+		"err_options":    "Bitte füge mindestens eine Option hinzu.",
+		"err_too_many":   "Zu viele Optionen (maximal 60).",
+		"err_date":       "Eines der Daten ist ungültig.",
+		"err_label":      "Eine Option ist zu lang (maximal 100 Zeichen).",
+		"err_name":       "Bitte gib deinen Namen ein (maximal 60 Zeichen).",
+		"err_name_taken": "Dieser Name ist bereits vergeben. Nutze den Bearbeiten-Button neben dem Namen, um die Stimme zu ändern.",
+		"err_closed":     "Diese Umfrage ist geschlossen.",
+		"err_last":       "Die letzte Option kann nicht entfernt werden.",
+		"err_comment":    "Bitte gib deinen Namen und einen Kommentar ein (maximal 1000 Zeichen).",
+		"err_generic":    "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+		"not_found_h":    "Seite nicht gefunden",
+		"not_found_p":    "Diese Umfrage gibt es (nicht mehr). Umfragen werden nach längerer Inaktivität gelöscht.",
+		"back_home":      "Zur Startseite",
+	},
+}

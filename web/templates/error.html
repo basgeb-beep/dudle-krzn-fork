@@ -1,0 +1,7 @@
+{{define "content"}}
+<section class="hero small">
+  <h1>{{.Title}}</h1>
+  <p class="lead">{{if .Error}}{{.Error}}{{else}}{{.T "not_found_p"}}{{end}}</p>
+  <p><a class="btn primary" href="/">{{.T "back_home"}}</a></p>
+</section>
+{{end}}

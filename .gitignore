@@ -1,7 +1,3 @@
-config.rb
-locale/dudle.pot
-locale/*/dudle.mo
-css/*
-extensions/*
-maintenance.html
-.vagrant
+dudle.db*
+*.db
+/dudle-ng
