@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Planificació de codi obert – sense anuncis, sense rastreig.",
 		"language":            "Llengua",
 		"home_h1":             "Trobeu junts la millor data.",
-		"home_lead":           "Crea una enquesta, comparteix l’enllaç i mira d’un cop d’ull què li va bé a tothom. No cal registrar-se.",
 		"f_title":             "Títol",
 		"f_title_ph":          "p. ex. Sopar d’equip",
 		"f_desc":              "Descripció (opcional)",

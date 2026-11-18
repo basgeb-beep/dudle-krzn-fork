@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Åpen kildekode for planlegging – ingen reklame, ingen sporing.",
 		"language":            "Språk",
 		"home_h1":             "Finn den beste datoen sammen.",
-		"home_lead":           "Lag en avstemning, del lenken og se med en gang hva som passer for alle. Ingen registrering nødvendig.",
 		"f_title":             "Tittel",
 		"f_title_ph":          "f.eks. Lagmiddag",
 		"f_desc":              "Beskrivelse (valgfri)",

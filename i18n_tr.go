@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Açık kaynaklı planlama – reklam yok, izleme yok.",
 		"language":            "Dil",
 		"home_h1":             "En uygun tarihi birlikte bulun.",
-		"home_lead":           "Bir anket oluşturun, bağlantıyı paylaşın ve herkese neyin uygun olduğunu tek bakışta görün. Kayıt gerekmez.",
 		"f_title":             "Başlık",
 		"f_title_ph":          "ör. Takım yemeği",
 		"f_desc":              "Açıklama (isteğe bağlı)",

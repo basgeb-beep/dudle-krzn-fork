@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Kosala mwango na bokaboli ya kode – na ba maloba ya komɛlɛla te, na kolanda te.",
 		"language":            "Lingála",
 		"home_h1":             "Bózwa elongo mokolo ya malamu koleka.",
-		"home_lead":           "Sala botuni, kabola lien mpe tala na miso ndambo nini ekoki na bato nyonso. Esɛngi te okomisa nkombo.",
 		"f_title":             "Nkombo ya botuni",
 		"f_title_ph":          "ndakisa: Limpa ya mpokwa ya ekipi",
 		"f_desc":              "Ndimbola (na bolingo)",

@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Avoimen lähdekoodin aikataulutus – ei mainoksia, ei seurantaa.",
 		"language":            "Kieli",
 		"home_h1":             "Löytäkää paras päivä yhdessä.",
-		"home_lead":           "Luo kysely, jaa linkki ja näe yhdellä silmäyksellä, mikä sopii kaikille. Rekisteröitymistä ei tarvita.",
 		"f_title":             "Otsikko",
 		"f_title_ph":          "esim. Tiimin illallinen",
 		"f_desc":              "Kuvaus (valinnainen)",

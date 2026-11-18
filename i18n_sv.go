@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Öppen källkod för schemaläggning – inga annonser, ingen spårning.",
 		"language":            "Språk",
 		"home_h1":             "Hitta det bästa datumet tillsammans.",
-		"home_lead":           "Skapa en omröstning, dela länken och se direkt vad som passar alla. Ingen registrering behövs.",
 		"f_title":             "Titel",
 		"f_title_ph":          "t.ex. Middag med laget",
 		"f_desc":              "Beskrivning (valfri)",

@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Avatud lähtekoodiga ajaplaneerimine – ilma reklaamide ja jälgimiseta.",
 		"language":            "Keel",
 		"home_h1":             "Leidke koos parim kuupäev.",
-		"home_lead":           "Loo küsitlus, jaga linki ja näe ühe pilguga, mis sobib kõigile. Registreerimist pole vaja.",
 		"f_title":             "Pealkiri",
 		"f_title_ph":          "nt Meeskonna õhtusöök",
 		"f_desc":              "Kirjeldus (valikuline)",

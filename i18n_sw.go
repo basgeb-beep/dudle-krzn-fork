@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Upangaji wa chanzo huria – bila matangazo, bila ufuatiliaji.",
 		"language":            "Lugha",
 		"home_h1":             "Tafuteni pamoja tarehe bora.",
-		"home_lead":           "Unda kura ya maoni, shiriki kiungo na uone kwa mtazamo mmoja kinachomfaa kila mtu. Hakuna haja ya kujisajili.",
 		"f_title":             "Kichwa",
 		"f_title_ph":          "mf. Chakula cha jioni cha timu",
 		"f_desc":              "Maelezo (si lazima)",

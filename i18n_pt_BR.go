@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Agendamento de código aberto – sem anúncios, sem rastreamento.",
 		"language":            "Idioma",
 		"home_h1":             "Encontrem juntos a melhor data.",
-		"home_lead":           "Crie uma enquete, compartilhe o link e veja num relance o que funciona para todos. Sem precisar de cadastro.",
 		"f_title":             "Título",
 		"f_title_ph":          "ex.: Jantar da equipe",
 		"f_desc":              "Descrição (opcional)",

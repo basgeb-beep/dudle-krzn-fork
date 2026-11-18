@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Planowanie open source – bez reklam, bez śledzenia.",
 		"language":            "Język",
 		"home_h1":             "Znajdźcie razem najlepszy termin.",
-		"home_lead":           "Utwórz ankietę, udostępnij link i zobacz na pierwszy rzut oka, co pasuje wszystkim. Rejestracja nie jest potrzebna.",
 		"f_title":             "Tytuł",
 		"f_title_ph":          "np. Kolacja zespołu",
 		"f_desc":              "Opis (opcjonalnie)",

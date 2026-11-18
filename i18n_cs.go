@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Plánování s otevřeným kódem – bez reklam a bez sledování.",
 		"language":            "Jazyk",
 		"home_h1":             "Najděte společně nejlepší termín.",
-		"home_lead":           "Vytvořte anketu, sdílejte odkaz a na první pohled uvidíte, co vyhovuje všem. Bez registrace.",
 		"f_title":             "Název",
 		"f_title_ph":          "např. Večeře týmu",
 		"f_desc":              "Popis (nepovinný)",

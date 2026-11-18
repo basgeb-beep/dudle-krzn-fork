@@ -5,7 +5,6 @@ func init() {
 		"footer_note":         "Malfermitkoda planado – sen reklamoj, sen spurado.",
 		"language":            "Lingvo",
 		"home_h1":             "Trovu kune la plej taŭgan daton.",
-		"home_lead":           "Kreu enketon, kundividu la ligilon kaj vidu unuavide, kio taŭgas por ĉiuj. Registriĝo ne necesas.",
 		"f_title":             "Titolo",
 		"f_title_ph":          "ekz. Teamo-vespermanĝo",
 		"f_desc":              "Priskribo (laŭvola)",
