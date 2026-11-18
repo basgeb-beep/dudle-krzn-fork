@@ -45,3 +45,9 @@ Run it behind a TLS-terminating reverse proxy (it honours `X-Forwarded-Proto`).
 - No rate limiting; put a proxy in front if the instance is public.
 - Anyone with a poll link can edit any participant's answers (same as classic dudle/Doodle).
 - Poll and admin links are secrets; losing the admin link means losing admin access.
+
+## License
+
+Licensed under the [GNU Affero General Public License v3.0](License) (AGPL-3.0-or-later), the same license as the original [dudle](https://github.com/kellerben/dudle).
+
+If you run a modified version as a network service, section 13 of the AGPL requires that you offer your users the corresponding source code, for example with a link to your repository.
