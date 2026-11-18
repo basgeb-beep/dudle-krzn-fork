@@ -8,16 +8,24 @@
 <article class="card intro">
   <div class="intro-top">
     <h1>{{.Poll.Title}}</h1>
-    {{if .Poll.Closed}}<span class="badge">{{.T "closed"}}</span>{{end}}
+    {{if .Poll.IsClosed}}<span class="badge">{{.T "closed"}}</span>{{end}}
   </div>
   {{if .Poll.Description}}<p class="desc">{{.Poll.Description}}</p>{{end}}
   {{if .DurationText}}<p class="dur-info">{{.T "dur_info" .DurationText}}</p>{{end}}
 </article>
 
 {{if .Error}}<div class="alert error" role="alert">{{.Error}}</div>{{end}}
-{{if .Poll.Closed}}<div class="alert info">{{.T "closed_note"}}</div>{{end}}
+{{if .Poll.IsClosed}}<div class="alert info">{{.T "closed_note"}}</div>{{else if .DeadlineText}}<div class="alert info">{{.T "deadline_note" .DeadlineText}}</div>{{end}}
 
-{{if .HasBest}}
+{{if .Final}}
+<section class="final-banner" aria-labelledby="final-h">
+  <span class="star" aria-hidden="true">✓</span>
+  <div>
+    <strong id="final-h">{{.T "final_title"}}</strong><br><span>{{.Final.Full}}</span>
+    {{if .FinalICS}}<p><a class="btn small" href="/p/{{.Poll.ID}}/event.ics" download>{{.T "ics_btn"}}</a></p>{{end}}
+  </div>
+</section>
+{{else if .HasBest}}
 <section class="best-banner" aria-label="{{.BestTitle}}">
   <span class="star" aria-hidden="true">★</span>
   <div><strong>{{.BestTitle}}</strong><br><span>{{.BestText}}</span></div>
@@ -43,7 +51,7 @@
         <tr>
           <th class="name" scope="col">{{.T "participants"}} <span class="count">{{.NumVoters}}</span></th>
           {{range .Opts}}
-          <th scope="col" class="opt{{if .Best}} best{{end}}">
+          <th scope="col" class="opt{{if .Best}} best{{end}}{{if .Final}} final{{end}}">
             {{if .IsDate}}<span class="wd">{{.Weekday}}</span><span class="day">{{.Day}}</span>{{if .Time}}<span class="tm">{{.Time}}</span>{{end}}
             {{else}}<span class="lbl">{{.Label}}</span>{{end}}
           </th>
@@ -64,7 +72,7 @@
         <tr>
           <th class="name" scope="row">
             <span class="who">{{.Name}}</span>
-            {{if and (not $.Poll.Closed) .CanEdit}}<a class="icon-btn" href="/p/{{$.Poll.ID}}?edit={{.ID}}#vote" title="{{$.T "edit"}}" aria-label="{{$.T "edit"}}: {{.Name}}"><span aria-hidden="true">✎</span></a>
+            {{if and (not $.Poll.IsClosed) .CanEdit}}<a class="icon-btn" href="/p/{{$.Poll.ID}}?edit={{.ID}}#vote" title="{{$.T "edit"}}" aria-label="{{$.T "edit"}}: {{.Name}}"><span aria-hidden="true">✎</span></a>
             <a class="icon-btn" href="/p/{{$.Poll.ID}}?delete={{.ID}}#participants" title="{{$.T "delete"}}" aria-label="{{$.T "delete"}}: {{.Name}}"><span aria-hidden="true">✕</span></a>{{end}}
           </th>
           {{range .Cells}}<td class="cell c{{.Value}}"><span class="vs" title="{{$.VoteLabel .Value}}"><span aria-hidden="true">{{$.Symbol .Value}}</span><span class="sr">{{$.VoteLabel .Value}}</span></span></td>{{end}}
@@ -72,7 +80,7 @@
         {{end}}
         {{end}}
 
-        {{if and (not .Poll.Closed) (eq .EditID 0)}}
+        {{if and (not .Poll.IsClosed) (eq .EditID 0)}}
         <tr class="new">
           <td class="name"><input type="text" name="name" value="{{.NewName}}" maxlength="60" required placeholder="{{.T "your_name"}}" aria-label="{{.T "your_name"}}" autocomplete="name"></td>
           {{range $i, $c := .NewRow}}<td class="cell">{{template "voteselect" (dict $ $c (index $.Opts $i).Full)}}</td>{{end}}
@@ -87,7 +95,7 @@
       </tfoot>
     </table>
   </div>
-  {{if not .Poll.Closed}}
+  {{if not .Poll.IsClosed}}
   <div class="actions">
     <button class="btn primary" type="submit">{{.T "save"}}</button>
     {{if .EditID}}<a class="btn ghost" href="/p/{{.Poll.ID}}">{{.T "cancel"}}</a>{{end}}

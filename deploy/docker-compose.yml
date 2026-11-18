@@ -7,6 +7,7 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     environment:
+      TZ: Europe/Berlin               # deadlines end at midnight local time
       DUDLE_BASE_PATH: /dudle
       DUDLE_TRUST_PROXY: "1"        # nginx appends the real client IP to X-Forwarded-For
       DUDLE_EXPIRE_DAYS: "365"
