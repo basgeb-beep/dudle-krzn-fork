@@ -16,7 +16,8 @@
   --maybe-bg: #fdf0d2;
   --no: #8a90a8;
   --no-bg: #eef0f6;
-  --danger: #d6455d;
+  --danger: #b82e45;
+  --on-danger: #ffffff;
   --danger-bg: #fde5e9;
   --best: #fff6d6;
   --shadow: 0 1px 2px rgb(20 24 50 / .06), 0 8px 24px -12px rgb(20 24 50 / .18);
@@ -42,6 +43,7 @@
     --no: #7b819e;
     --no-bg: #1f2338;
     --danger: #ff7a90;
+    --on-danger: #1b1e2e;
     --danger-bg: #43202a;
     --best: #3a3414;
     --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px -12px rgb(0 0 0 / .6);
@@ -145,7 +147,7 @@ textarea { resize: vertical; }
 .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--on-accent); }
 .btn.ghost { background: transparent; }
 .btn.small { padding: 6px 12px; font-size: .9rem; }
-.btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger { background: var(--danger); border-color: var(--danger); color: var(--on-danger); }
 .btn.danger-ghost { color: var(--danger); background: transparent; }
 .btn.danger-ghost:hover { background: var(--danger-bg); }
 .actions { display: flex; gap: 10px; margin-top: 16px; }
@@ -291,7 +293,7 @@ ul.manage li.empty { color: var(--muted); justify-content: center; }
   .votes .name { min-width: 112px; padding-left: 12px; }
   .votes th.opt { min-width: 62px; }
 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 @media print {
   body { background: #fff; color: #000; }
   .top .btn, .share, .comment-form, .actions, footer nav, .langmenu, .icon-btn { display: none !important; }
@@ -299,3 +301,9 @@ ul.manage li.empty { color: var(--muted); justify-content: center; }
 
 form.inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .pwform { margin-bottom: 14px; }
+
+.prose h2 { font-size: 1.15rem; margin: 22px 0 8px; }
+.prose h2:first-child { margin-top: 0; }
+.prose ul { padding-inline-start: 1.2em; margin: 8px 0; }
+.prose li { margin: 6px 0; }
+.prose p { max-width: 70ch; }

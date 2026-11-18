@@ -78,6 +78,7 @@
       for (let d = 1; d <= days; d++) {
         const k = iso(y, m, d);
         const b = el('button', { type: 'button', className: 'day', textContent: d });
+        b.setAttribute('aria-label', fmtDay.format(new Date(y, m, d)));
         if (k === todayIso) b.classList.add('today');
         if (picked.has(k)) b.classList.add('on');
         b.setAttribute('aria-pressed', picked.has(k));
@@ -91,7 +92,12 @@
       cal.replaceChildren(head, grid);
     }
 
+    const status = el('p', { className: 'sr' });
+    status.setAttribute('role', 'status');
+    dp.append(status);
+
     function drawList() {
+      status.textContent = (L.count || '').replace('{n}', picked.size);
       list.replaceChildren();
       if (!picked.size) { list.append(el('li', { className: 'none', textContent: L.none })); return; }
       [...picked.keys()].sort().forEach((k) => {
@@ -107,6 +113,7 @@
           const on = times.includes(t);
           const c = el('button', { type: 'button', className: 'chip' + (on ? ' on' : ''), textContent: t });
           c.setAttribute('aria-pressed', on);
+          c.setAttribute('aria-label', t + ', ' + fmtDay.format(parse(k)));
           c.addEventListener('click', () => {
             const i = times.indexOf(t);
             if (i >= 0) times.splice(i, 1); else times.push(t);
@@ -121,7 +128,7 @@
           const p = pair(t, true);
           p.time.setAttribute('aria-label', L.time);
           p.time.addEventListener('input', () => { times[i] = p.time.value; });
-          const rmt = el('button', { type: 'button', className: 'rm', textContent: '×', title: L.remove });
+          const rmt = el('button', { type: 'button', className: 'rm', title: L.remove }, el('span', { textContent: '×', ariaHidden: 'true' }));
           rmt.setAttribute('aria-label', L.remove + ': ' + (t || L.time));
           rmt.addEventListener('click', () => { times.splice(i, 1); drawList(); });
           p.slot.append(rmt);
@@ -136,7 +143,7 @@
           const ins = row && row.querySelectorAll('.slot input[type=time]');
           if (ins && ins.length) ins[ins.length - 1].focus();
         });
-        const rm = el('button', { type: 'button', className: 'rm', textContent: '×', title: L.remove });
+        const rm = el('button', { type: 'button', className: 'rm', title: L.remove }, el('span', { textContent: '×', ariaHidden: 'true' }));
         rm.setAttribute('aria-label', L.remove + ': ' + fmtDay.format(parse(k)));
         rm.addEventListener('click', () => { picked.delete(k); drawCal(); drawList(); });
         const li = el('li', {}, el('span', { className: 'd', textContent: fmtDay.format(parse(k)) }),

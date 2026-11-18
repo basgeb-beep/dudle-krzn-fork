@@ -38,7 +38,7 @@
   <div class="tablewrap" id="participants">
     <table class="votes">
       <thead>
-        {{if .Groups}}<tr class="months"><th></th>{{range .Groups}}<th colspan="{{.Span}}">{{.Name}}</th>{{end}}</tr>{{end}}
+        {{if .Groups}}<tr class="months"><td></td>{{range .Groups}}<th colspan="{{.Span}}">{{.Name}}</th>{{end}}</tr>{{end}}
         <tr>
           <th class="name" scope="col">{{.T "participants"}} <span class="count">{{.NumVoters}}</span></th>
           {{range .Opts}}
@@ -55,7 +55,7 @@
         <tr class="editing">
           <td class="name">
             <input type="hidden" name="pid" value="{{.ID}}">
-            <input type="text" name="name" value="{{.Name}}" maxlength="60" required aria-label="{{$.T "your_name"}}" autofocus>
+            <input type="text" name="name" value="{{.Name}}" maxlength="60" required aria-label="{{$.T "your_name"}}" autofocus autocomplete="name">
           </td>
           {{range $i, $c := .Cells}}<td class="cell">{{template "voteselect" (dict $ $c (index $.Opts $i).Full)}}</td>{{end}}
         </tr>
@@ -63,8 +63,8 @@
         <tr>
           <th class="name" scope="row">
             <span class="who">{{.Name}}</span>
-            {{if not $.Poll.Closed}}<a class="icon-btn" href="/p/{{$.Poll.ID}}?edit={{.ID}}#vote" title="{{$.T "edit"}}" aria-label="{{$.T "edit"}}: {{.Name}}">✎</a>
-            <a class="icon-btn" href="/p/{{$.Poll.ID}}?delete={{.ID}}#participants" title="{{$.T "delete"}}" aria-label="{{$.T "delete"}}: {{.Name}}">✕</a>{{end}}
+            {{if not $.Poll.Closed}}<a class="icon-btn" href="/p/{{$.Poll.ID}}?edit={{.ID}}#vote" title="{{$.T "edit"}}" aria-label="{{$.T "edit"}}: {{.Name}}"><span aria-hidden="true">✎</span></a>
+            <a class="icon-btn" href="/p/{{$.Poll.ID}}?delete={{.ID}}#participants" title="{{$.T "delete"}}" aria-label="{{$.T "delete"}}: {{.Name}}"><span aria-hidden="true">✕</span></a>{{end}}
           </th>
           {{range .Cells}}<td class="cell c{{.Value}}"><span class="vs" title="{{$.VoteLabel .Value}}"><span aria-hidden="true">{{$.Symbol .Value}}</span><span class="sr">{{$.VoteLabel .Value}}</span></span></td>{{end}}
         </tr>
@@ -73,7 +73,7 @@
 
         {{if and (not .Poll.Closed) (eq .EditID 0)}}
         <tr class="new">
-          <td class="name"><input type="text" name="name" value="{{.NewName}}" maxlength="60" required placeholder="{{.T "your_name"}}" aria-label="{{.T "your_name"}}"></td>
+          <td class="name"><input type="text" name="name" value="{{.NewName}}" maxlength="60" required placeholder="{{.T "your_name"}}" aria-label="{{.T "your_name"}}" autocomplete="name"></td>
           {{range $i, $c := .NewRow}}<td class="cell">{{template "voteselect" (dict $ $c (index $.Opts $i).Full)}}</td>{{end}}
         </tr>
         {{end}}
@@ -116,7 +116,7 @@
   </div>
   {{else}}<p class="empty">{{.T "no_comments"}}</p>{{end}}
   <form method="post" action="/p/{{.Poll.ID}}/comment" class="comment-form">
-    <input type="text" name="name" maxlength="60" required placeholder="{{.T "your_name"}}" aria-label="{{.T "your_name"}}" value="{{.CmtName}}">
+    <input type="text" name="name" maxlength="60" required placeholder="{{.T "your_name"}}" aria-label="{{.T "your_name"}}" value="{{.CmtName}}" autocomplete="name">
     <textarea name="text" rows="2" maxlength="1000" required placeholder="{{.T "comment_ph"}}" aria-label="{{.T "comment_ph"}}">{{.CmtText}}</textarea>
     <button class="btn" type="submit">{{.T "post"}}</button>
   </form>

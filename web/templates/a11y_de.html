@@ -1,0 +1,49 @@
+{{define "content"}}
+<section class="hero small">
+  <h1>Erklärung zur Barrierefreiheit</h1>
+  <p class="lead">Diese Erklärung gilt für diese Instanz von Dudle-NG (Terminfindung und Umfragen). Stand: 18. November 2026.</p>
+</section>
+
+<article class="card prose">
+  <h2>Stand der Vereinbarkeit</h2>
+  <p>Ziel ist die Konformität mit den Web Content Accessibility Guidelines (WCAG) 2.1, Stufe AA. Diese Anforderungen stellt die europäische Norm EN 301 549 an digitale Angebote; sie ist die Grundlage der BITV 2.0 und des Barrierefreiheitsstärkungsgesetzes (BFSG).</p>
+  <p>Eine unabhängige Prüfung durch eine externe Stelle hat bisher <strong>nicht</strong> stattgefunden. Nach eigener Einschätzung ist diese Website <strong>teilweise</strong> mit den Anforderungen vereinbar.</p>
+
+  <h2>Wie geprüft wurde</h2>
+  <ul>
+    <li>Automatisierte Prüfung mit axe-core (Regeln für WCAG 2.0, 2.1 und 2.2, Stufen A und AA) im hellen und im dunklen Farbschema, für Startseite, Umfrage, Bearbeiten- und Löschen-Ansicht, Verwaltungsseite, Fehlerseite und die Sprachen Deutsch und Arabisch.</li>
+    <li>Manuelle Prüfung der Bedienung allein mit der Tastatur und der Darstellung bei schmaler Breite (320 Pixel).</li>
+    <li>Tests mit Screenreadern (zum Beispiel NVDA, JAWS oder VoiceOver) wurden bisher <strong>nicht</strong> durchgeführt.</li>
+  </ul>
+
+  <h2>Umgesetzte Maßnahmen</h2>
+  <ul>
+    <li>Alle Funktionen sind mit der Tastatur bedienbar, der Fokus ist deutlich sichtbar, und es gibt einen Link „Zum Inhalt springen“.</li>
+    <li>Texte erfüllen einen Kontrast von mindestens 4,5 : 1 (große Schrift und Bedienelemente 3 : 1), in beiden Farbschemata. Das Schema folgt der Einstellung des Betriebssystems.</li>
+    <li>Abstimmungsergebnisse werden nicht nur über Farbe, sondern zusätzlich über Symbole und Text vermittelt.</li>
+    <li>Formularfelder haben Beschriftungen, Fehlermeldungen erscheinen als Text und werden Hilfstechnologien mitgeteilt.</li>
+    <li>Sprache der Seite und einzelner Sprachlinks sind ausgezeichnet. Arabisch und Hebräisch werden von rechts nach links dargestellt.</li>
+    <li>Die Schrift lässt sich vergrößern; das Layout passt sich an kleine Bildschirme an. Bewegungen werden reduziert, wenn das Betriebssystem das verlangt.</li>
+    <li>Die Grundfunktionen (Umfrage anlegen, abstimmen) funktionieren auch ohne JavaScript.</li>
+  </ul>
+
+  <h2>Bekannte Einschränkungen</h2>
+  <ul>
+    <li>Die Übersetzungen in die weiteren Sprachen wurden maschinell erstellt und nicht von Muttersprachlerinnen oder Muttersprachlern geprüft.</li>
+    <li>Die Kalender-Datumsauswahl ist optimiert für Maus und Touch; sie ist per Tastatur bedienbar, aber weniger komfortabel als ein Standard-Datumsfeld. Ohne JavaScript stehen einfache Datumsfelder zur Verfügung.</li>
+    <li>Die Abstimmungstabelle bei Umfragen mit vielen Optionen wird in der Breite innerhalb der Tabelle gescrollt.</li>
+    <li>Es gibt keine Inhalte in Leichter Sprache und keine Videos in Gebärdensprache.</li>
+    <li>Die Ausgabeformate CSV-Export und Atom-Feed sind keine Webseiten und nicht auf Barrierefreiheit geprüft.</li>
+  </ul>
+
+  <h2>Barrieren melden, Feedback und Kontakt</h2>
+  {{if .Contact}}
+  <p>Wenn Ihnen Barrieren auffallen oder Sie Inhalte in einer zugänglichen Form benötigen, melden Sie sich bitte beim Betreiber: {{if .ContactHref}}<a href="{{.ContactHref}}">{{.Contact}}</a>{{else}}{{.Contact}}{{end}}. Wir antworten in angemessener Frist.</p>
+  {{else}}
+  <p>Der Betreiber dieser Instanz hat noch keine Kontaktmöglichkeit hinterlegt.</p>
+  {{end}}
+
+  <h2>Durchsetzungsverfahren</h2>
+  <p>Wenn Sie mit der Antwort auf Ihre Meldung nicht zufrieden sind, können Sie sich an die für Sie zuständige Stelle zur Durchsetzung der Barrierefreiheitsanforderungen wenden, zum Beispiel an die zuständige Marktüberwachungsbehörde oder bei öffentlichen Stellen an die Schlichtungsstelle nach dem Behindertengleichstellungsgesetz.</p>
+</article>
+{{end}}

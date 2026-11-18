@@ -28,6 +28,7 @@ Configuration (flag or environment variable):
 | `-base-url` | `DUDLE_BASE_URL` | derived from request | public URL for share links/feeds |
 | `-expire-days` | `DUDLE_EXPIRE_DAYS` | `365` | delete polls inactive this long, `0` = never |
 | `-base-path` | `DUDLE_BASE_PATH` | none | serve under a URL prefix such as `/dudle`; the reverse proxy forwards the path unchanged. If you set `-base-url`, include the prefix there |
+| `-contact` | `DUDLE_CONTACT` | none | email or URL for accessibility feedback, shown on `/accessibility`. **Set this** for a public instance |
 | `-rate-limit` | `DUDLE_RATE_LIMIT` | `60` | max write requests (POST) per client per minute, `0` = off |
 | `-trust-proxy` | `DUDLE_TRUST_PROXY=1` | off | identify clients by `X-Forwarded-For`; only enable behind a reverse proxy that sets it |
 
@@ -48,6 +49,9 @@ Run it behind a TLS-terminating reverse proxy (it honours `X-Forwarded-Proto`).
 - Optional **participant password** (visitors must unlock the poll to see, vote and export) and optional **admin password** (required in addition to the secret admin link). Set both on the admin page.
 - Passwords are stored as salted PBKDF2-SHA256 hashes; unlocking sets a signed cookie that becomes invalid when the password changes. Password attempts are limited to 10 per minute per client and poll.
 - The admin can **invite participants** by name; anyone can edit or delete (with confirmation) a participant on the poll page while the poll is open.
+
+## Accessibility
+Target: WCAG 2.1 level AA (EN 301 549, the basis of BITV 2.0 and the German BFSG). The footer links to an accessibility statement at `/accessibility` (German and English). It is based on a self-assessment (automated axe-core checks, keyboard-only and 320 px checks) and says so: no external audit and no screen reader tests yet. Set `DUDLE_CONTACT` so the statement names a feedback contact, and review the statement text for your situation (whether the BFSG applies to you is for you or your legal counsel to decide).
 
 ## Known limitations
 - Rate limiting is per client IP and in memory (resets on restart); it only covers write requests.

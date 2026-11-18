@@ -30,6 +30,7 @@ func main() {
 	rate := flag.Int("rate-limit", rateDef, "max write requests (POST) per client per minute, 0 = off (env DUDLE_RATE_LIMIT)")
 	trustProxy := flag.Bool("trust-proxy", env("DUDLE_TRUST_PROXY", "") == "1", "identify clients by X-Forwarded-For; only behind a reverse proxy (env DUDLE_TRUST_PROXY=1)")
 	basePath := flag.String("base-path", env("DUDLE_BASE_PATH", ""), "serve under this URL path prefix, e.g. /dudle (env DUDLE_BASE_PATH)")
+	contact := flag.String("contact", env("DUDLE_CONTACT", ""), "contact (email or URL) for accessibility feedback, shown in the accessibility statement (env DUDLE_CONTACT)")
 	flag.Parse()
 
 	store, err := OpenStore(*dbPath)
@@ -43,6 +44,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	srv.SetContact(*contact)
 	srv.SetBasePath(*basePath)
 	srv.SetRateLimit(*rate, *trustProxy)
 

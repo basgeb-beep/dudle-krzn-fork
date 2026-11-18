@@ -1,0 +1,49 @@
+{{define "content"}}
+<section class="hero small">
+  <h1>Accessibility statement</h1>
+  <p class="lead">This statement applies to this instance of Dudle-NG (scheduling and polls). Last updated: 18 November 2026.</p>
+</section>
+
+<article class="card prose">
+  <h2>Conformance status</h2>
+  <p>The goal is conformance with the Web Content Accessibility Guidelines (WCAG) 2.1, level AA. These are the requirements the European standard EN 301 549 sets for digital services; it is the basis of the German BITV 2.0 and the Barrierefreiheitsstärkungsgesetz (BFSG).</p>
+  <p>No independent audit by an external body has taken place so far. By our own assessment, this website is <strong>partially</strong> conformant.</p>
+
+  <h2>How it was tested</h2>
+  <ul>
+    <li>Automated checks with axe-core (rules for WCAG 2.0, 2.1 and 2.2, levels A and AA) in the light and dark colour schemes, for the start page, poll, edit and delete views, management page, error page, and in German and Arabic.</li>
+    <li>Manual checks of keyboard-only operation and of the layout at a narrow width (320 pixels).</li>
+    <li>Tests with screen readers (for example NVDA, JAWS or VoiceOver) have <strong>not</strong> been carried out yet.</li>
+  </ul>
+
+  <h2>Measures taken</h2>
+  <ul>
+    <li>All functions can be used with the keyboard, the focus is clearly visible, and there is a “Skip to content” link.</li>
+    <li>Text has a contrast of at least 4.5 : 1 (large text and controls 3 : 1) in both colour schemes. The scheme follows the operating system setting.</li>
+    <li>Voting results are not conveyed by colour alone, but also by symbols and text.</li>
+    <li>Form fields have labels; error messages appear as text and are announced to assistive technology.</li>
+    <li>The page language and individual language links are marked up. Arabic and Hebrew are displayed right to left.</li>
+    <li>Text can be enlarged and the layout adapts to small screens. Motion is reduced when the operating system asks for it.</li>
+    <li>The core functions (creating a poll, voting) also work without JavaScript.</li>
+  </ul>
+
+  <h2>Known limitations</h2>
+  <ul>
+    <li>The translations into the additional languages were produced by machine and have not been reviewed by native speakers.</li>
+    <li>The calendar date picker is optimised for mouse and touch; it can be operated with the keyboard but is less convenient than a standard date field. Without JavaScript, plain date fields are used.</li>
+    <li>The voting table of polls with many options scrolls horizontally inside the table.</li>
+    <li>There is no content in plain language and no sign-language video.</li>
+    <li>The CSV export and Atom feed are not web pages and have not been checked for accessibility.</li>
+  </ul>
+
+  <h2>Feedback and contact</h2>
+  {{if .Contact}}
+  <p>If you notice barriers or need content in an accessible form, please contact the operator: {{if .ContactHref}}<a href="{{.ContactHref}}">{{.Contact}}</a>{{else}}{{.Contact}}{{end}}. We will reply within a reasonable time.</p>
+  {{else}}
+  <p>The operator of this instance has not yet provided a contact.</p>
+  {{end}}
+
+  <h2>Enforcement procedure</h2>
+  <p>If you are not satisfied with the reply to your report, you can turn to the body responsible for enforcing accessibility requirements, for example the competent market surveillance authority or, for public bodies, the conciliation body under the German Disability Equality Act.</p>
+</article>
+{{end}}

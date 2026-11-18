@@ -11,15 +11,15 @@
 <script src="/static/app.js" defer></script>
 </head>
 <body>
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#main">{{.T "skip"}}</a>
 <header class="top">
   <a class="brand" href="/"><img src="/static/favicon.svg" alt="" width="28" height="28"><span>Dudle</span></a>
   <span class="tagline">{{.T "tagline"}}</span>
   <a class="btn small ghost" href="/">{{.T "new_poll"}}</a>
   <details class="langmenu">
-    <summary aria-label="{{.T "language"}}"><span aria-hidden="true">🌐</span> {{.LangName .Lang}}</summary>
+    <summary><span aria-hidden="true">🌐</span> <span class="sr">{{.T "language"}}: </span>{{.LangName .Lang}}</summary>
     <ul>
-      {{range .Langs}}<li><a href="{{$.Path}}?lang={{.}}" hreflang="{{.}}" lang="{{.}}"{{if eq . $.Lang}} aria-current="true"{{end}}>{{$.LangName .}}</a></li>{{end}}
+      {{range .Langs}}<li><a href="{{$.Path}}?lang={{.}}" hreflang="{{tag .}}" lang="{{tag .}}"{{if eq . $.Lang}} aria-current="true"{{end}}>{{$.LangName .}}</a></li>{{end}}
     </ul>
   </details>
 </header>
@@ -27,9 +27,9 @@
 {{template "content" .}}
 </main>
 <footer>
-  <span>{{.T "footer_note"}}</span>
+  <span>{{.T "footer_note"}} · <a href="/accessibility">{{.T "a11y_link"}}</a></span>
   <nav class="footlangs" aria-label="{{.T "language"}}">
-    {{range .Langs}}<a href="{{$.Path}}?lang={{.}}" hreflang="{{.}}" lang="{{.}}"{{if eq . $.Lang}} aria-current="true"{{end}}>{{$.LangName .}}</a>{{end}}
+    {{range .Langs}}<a href="{{$.Path}}?lang={{.}}" hreflang="{{tag .}}" lang="{{tag .}}"{{if eq . $.Lang}} aria-current="true"{{end}}>{{$.LangName .}}</a>{{end}}
   </nav>
 </footer>
 </body>
@@ -37,7 +37,7 @@
 
 {{define "datepicker"}}
 <div class="datepicker" data-initial="{{.Init}}"
-     data-none="{{.T "dp_none"}}" data-time="{{.T "dp_time"}}" data-addtime="{{.T "dp_add_time"}}" data-remove="{{.T "dp_remove"}}"
+     data-none="{{.T "dp_none"}}" data-time="{{.T "dp_time"}}" data-addtime="{{.T "dp_add_time"}}" data-count="{{.T "dp_count"}}" data-remove="{{.T "dp_remove"}}"
      data-prev="{{.T "cal_prev"}}" data-next="{{.T "cal_next"}}">
   <div class="cal" hidden></div>
   <ul class="picked"></ul>
