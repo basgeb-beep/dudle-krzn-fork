@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"embed"
-	"encoding/csv"
-	"encoding/xml"
 	"errors"
 	"fmt"
 	"html/template"
@@ -331,8 +329,6 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /p/{id}/vote", s.vote)
 	mux.HandleFunc("POST /p/{id}/delete_participant", s.deleteParticipant)
 	mux.HandleFunc("POST /p/{id}/comment", s.comment)
-	mux.HandleFunc("GET /p/{id}/feed.atom", s.feed)
-	mux.HandleFunc("GET /p/{id}/export.csv", s.export)
 	mux.HandleFunc("GET /p/{id}/event.ics", s.ics)
 	mux.HandleFunc("GET /p/{id}/admin/{token}", s.admin)
 	mux.HandleFunc("POST /p/{id}/admin/{token}/{action}", s.adminAction)
@@ -725,104 +721,6 @@ func (s *Server) comment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/p/"+d.Poll.ID+"#comments", http.StatusSeeOther)
-}
-
-// ---------------------------------------------------------------- feed / export
-
-type atomFeed struct {
-	XMLName xml.Name    `xml:"http://www.w3.org/2005/Atom feed"`
-	Title   string      `xml:"title"`
-	ID      string      `xml:"id"`
-	Updated string      `xml:"updated"`
-	Link    atomLink    `xml:"link"`
-	Entries []atomEntry `xml:"entry"`
-}
-type atomLink struct {
-	Href string `xml:"href,attr"`
-	Rel  string `xml:"rel,attr,omitempty"`
-}
-type atomEntry struct {
-	Title   string   `xml:"title"`
-	ID      string   `xml:"id"`
-	Updated string   `xml:"updated"`
-	Link    atomLink `xml:"link"`
-	Content string   `xml:"content"`
-}
-
-func (s *Server) feed(w http.ResponseWriter, r *http.Request) {
-	d := s.loadPoll(w, r)
-	if d == nil {
-		return
-	}
-	if d.Poll.HideResults && !s.isManager(r, &d.Poll) {
-		s.notFound(w, r)
-		return
-	}
-	lang := langOf(r)
-	pollURL := s.absURL(r, "/p/"+d.Poll.ID)
-	f := atomFeed{
-		Title:   d.Poll.Title,
-		ID:      pollURL,
-		Updated: d.Poll.UpdatedAt.UTC().Format(time.RFC3339),
-		Link:    atomLink{Href: pollURL, Rel: "alternate"},
-	}
-	for _, p := range d.Participants {
-		f.Entries = append(f.Entries, atomEntry{
-			Title: p.Name, ID: fmt.Sprintf("%s#participant-%d", pollURL, p.ID),
-			Updated: p.CreatedAt.UTC().Format(time.RFC3339), Link: atomLink{Href: pollURL},
-			Content: tr(lang, "participants") + ": " + p.Name,
-		})
-	}
-	for _, c := range d.Comments {
-		f.Entries = append(f.Entries, atomEntry{
-			Title: c.Name, ID: fmt.Sprintf("%s#comment-%d", pollURL, c.ID),
-			Updated: c.CreatedAt.UTC().Format(time.RFC3339), Link: atomLink{Href: pollURL},
-			Content: c.Text,
-		})
-	}
-	w.Header().Set("Content-Type", "application/atom+xml; charset=utf-8")
-	fmt.Fprint(w, xml.Header)
-	enc := xml.NewEncoder(w)
-	enc.Indent("", "  ")
-	if err := enc.Encode(f); err != nil {
-		log.Printf("feed: %v", err)
-	}
-}
-
-// csvSafe neutralises spreadsheet formula injection.
-func csvSafe(s string) string {
-	if s != "" && strings.ContainsAny(s[:1], "=+-@\t\r") {
-		return "'" + s
-	}
-	return s
-}
-
-func (s *Server) export(w http.ResponseWriter, r *http.Request) {
-	d := s.loadPoll(w, r)
-	if d == nil {
-		return
-	}
-	if d.Poll.HideResults && !s.isManager(r, &d.Poll) {
-		s.notFound(w, r)
-		return
-	}
-	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+d.Poll.ID+`.csv"`)
-	cw := csv.NewWriter(w)
-	head := []string{"name"}
-	for _, o := range d.Options {
-		head = append(head, csvSafe(o.Label))
-	}
-	cw.Write(head)
-	names := map[int]string{VoteNo: "no", VoteYes: "yes", VoteMaybe: "maybe"}
-	for _, p := range d.Participants {
-		row := []string{csvSafe(p.Name)}
-		for _, o := range d.Options {
-			row = append(row, names[p.Votes[o.ID]])
-		}
-		cw.Write(row)
-	}
-	cw.Flush()
 }
 
 // ---------------------------------------------------------------- admin

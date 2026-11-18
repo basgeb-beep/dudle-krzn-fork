@@ -402,16 +402,6 @@ func TestHTTPFullFlow(t *testing.T) {
 		t.Fatal("comment missing")
 	}
 
-	// Export and feed.
-	w = c.do("GET", "/p/"+id+"/export.csv", nil)
-	if !strings.HasPrefix(w.Header().Get("Content-Type"), "text/csv") || !strings.Contains(w.Body.String(), "Ben,yes,yes") {
-		t.Fatalf("csv: %q", w.Body.String())
-	}
-	w = c.do("GET", "/p/"+id+"/feed.atom", nil)
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "<feed") || !strings.Contains(w.Body.String(), "Ben") {
-		t.Fatalf("feed: %d %s", w.Code, w.Body.String())
-	}
-
 	// Admin actions.
 	base := "/p/" + id + "/admin/" + token + "/"
 	if w = c.do("POST", base+"settings", url.Values{"title": {"Renamed"}, "closed": {"1"}}); w.Code != 303 {
@@ -482,16 +472,8 @@ func TestHTTPTextPollAndMisc(t *testing.T) {
 	id = strings.Split(loc, "/")[2]
 	oid := regexp.MustCompile(`name="o_(\d+)"`).FindStringSubmatch(c.do("GET", "/p/"+id, nil).Body.String())[1]
 	c.do("POST", "/p/"+id+"/vote", url.Values{"name": {"Zed"}, "o_" + oid: {"2"}})
-	if !strings.Contains(c.do("GET", "/p/"+id+"/export.csv", nil).Body.String(), "Zed,no") {
+	if b := c.do("GET", "/p/"+id, nil).Body.String(); !strings.Contains(b, `class="cell c0"`) || strings.Contains(b, `class="cell c2"`) {
 		t.Fatal("maybe vote accepted although disabled")
-	}
-}
-
-func TestCSVInjection(t *testing.T) {
-	for in, want := range map[string]string{"=1+1": "'=1+1", "+x": "'+x", "-x": "'-x", "@x": "'@x", "plain": "plain", "": ""} {
-		if got := csvSafe(in); got != want {
-			t.Errorf("csvSafe(%q)=%q want %q", in, got, want)
-		}
 	}
 }
 
@@ -592,7 +574,7 @@ func TestAccessControlInviteDelete(t *testing.T) {
 	if w.Code != 303 {
 		t.Fatalf("set pw: %d", w.Code)
 	}
-	for _, p := range []string{"/p/" + id, "/p/" + id + "/export.csv", "/p/" + id + "/feed.atom"} {
+	for _, p := range []string{"/p/" + id, "/p/" + id + "/event.ics"} {
 		if w := c.do("GET", p, nil); w.Code != 401 {
 			t.Fatalf("%s unlocked: %d", p, w.Code)
 		}
@@ -1075,20 +1057,25 @@ func TestHiddenResults(t *testing.T) {
 	anna.do("POST", "/p/"+id+"/vote", url.Values{"name": {"Anna"}})
 	ben.do("POST", "/p/"+id+"/vote", url.Values{"name": {"Ben"}})
 	ab := anna.do("GET", "/p/"+id, nil).Body.String()
-	if !strings.Contains(ab, "Anna") || strings.Contains(ab, "Ben") || strings.Contains(ab, "<tfoot>") || strings.Contains(ab, "export.csv") {
+	if !strings.Contains(ab, "Anna") || strings.Contains(ab, "Ben") || strings.Contains(ab, "<tfoot>") {
 		t.Fatal("participant must only see their own entry")
-	}
-	if w := anna.do("GET", "/p/"+id+"/export.csv", nil); w.Code != 404 {
-		t.Fatalf("export visible: %d", w.Code)
-	}
-	if w := anna.do("GET", "/p/"+id+"/feed.atom", nil); w.Code != 404 {
-		t.Fatalf("feed visible: %d", w.Code)
 	}
 	ob := org.do("GET", "/p/"+id, nil).Body.String()
 	if !strings.Contains(ob, "Anna") || !strings.Contains(ob, "Ben") {
 		t.Fatal("organiser must see all entries")
 	}
-	if w := org.do("GET", "/p/"+id+"/export.csv", nil); w.Code != 200 || !strings.Contains(w.Body.String(), "Ben") {
-		t.Fatal("organiser export")
+}
+
+func TestNoExportOrFeed(t *testing.T) {
+	c := newClient(t)
+	id := strings.Split(c.do("POST", "/create", url.Values{"title": {"T"}, "kind": {"text"}, "choices": {"A"}}).Header().Get("Location"), "/")[2]
+	body := c.do("GET", "/p/"+id, nil).Body.String()
+	if strings.Contains(body, "export.csv") || strings.Contains(body, "feed.atom") {
+		t.Fatal("export/feed links still shown")
+	}
+	for _, p := range []string{"/export.csv", "/feed.atom"} {
+		if w := c.do("GET", "/p/"+id+p, nil); w.Code != 404 {
+			t.Fatalf("%s: %d", p, w.Code)
+		}
 	}
 }
