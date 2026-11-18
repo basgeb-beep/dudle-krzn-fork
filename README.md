@@ -27,6 +27,8 @@ Configuration (flag or environment variable):
 | `-db` | `DUDLE_DB` | `dudle.db` | SQLite file |
 | `-base-url` | `DUDLE_BASE_URL` | derived from request | public URL for share links/feeds |
 | `-expire-days` | `DUDLE_EXPIRE_DAYS` | `365` | delete polls inactive this long, `0` = never |
+| `-rate-limit` | `DUDLE_RATE_LIMIT` | `60` | max write requests (POST) per client per minute, `0` = off |
+| `-trust-proxy` | `DUDLE_TRUST_PROXY=1` | off | identify clients by `X-Forwarded-For`; only enable behind a reverse proxy that sets it |
 
 Docker:
 ```sh
@@ -42,7 +44,7 @@ Run it behind a TLS-terminating reverse proxy (it honours `X-Forwarded-Proto`).
 - `web/` – embedded templates, CSS and JS
 
 ## Known limitations
-- No rate limiting; put a proxy in front if the instance is public.
+- Rate limiting is per client IP and in memory (resets on restart); it only covers write requests.
 - Anyone with a poll link can edit any participant's answers (same as classic dudle/Doodle).
 - Poll and admin links are secrets; losing the admin link means losing admin access.
 

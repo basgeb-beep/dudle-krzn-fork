@@ -28,6 +28,19 @@ type Server struct {
 	store   *Store
 	pages   map[string]*template.Template
 	baseURL string // optional fixed public base URL
+
+	limiter    *limiter // nil = no rate limiting
+	trustProxy bool     // use X-Forwarded-For to identify clients
+}
+
+// SetRateLimit enables per-client limiting of write requests (per minute, 0 = off).
+func (s *Server) SetRateLimit(perMinute int, trustProxy bool) {
+	s.trustProxy = trustProxy
+	if perMinute > 0 {
+		s.limiter = newLimiter(perMinute)
+	} else {
+		s.limiter = nil
+	}
 }
 
 // VoteSel is the data for one vote <select>.
@@ -226,7 +239,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /p/{id}/admin/{token}", s.admin)
 	mux.HandleFunc("POST /p/{id}/admin/{token}/{action}", s.adminAction)
 	mux.HandleFunc("/", s.notFound)
-	return s.middleware(mux)
+	return s.middleware(s.rateLimit(mux))
 }
 
 func cacheStatic(h http.Handler) http.Handler {
