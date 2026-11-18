@@ -38,14 +38,16 @@
     cal.hidden = false;
 
     const L = dp.dataset;
-    const picked = new Map(); // 'YYYY-MM-DD' -> ['HH:MM' | '', ...] (several times per day)
+    const picked = new Map(); // 'YYYY-MM-DD' -> ['HH:MM', ...]; [] = whole day; '' = empty custom field
     (L.initial || '').split(',').filter(Boolean).forEach((s) => {
       const [d, t] = s.split('|');
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
       const times = picked.get(d) || [];
-      if (!times.includes(t || '')) times.push(t || '');
+      if (t && !times.includes(t)) times.push(t);
       picked.set(d, times);
     });
+    const GRID = []; // quick-pick times 08:00 .. 16:00
+    for (let h = 8; h <= 16; h++) GRID.push(String(h).padStart(2, '0') + ':00');
 
     const pad = (n) => String(n).padStart(2, '0');
     const iso = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
@@ -81,7 +83,7 @@
         b.setAttribute('aria-pressed', picked.has(k));
         b.disabled = k < todayIso && !picked.has(k);
         b.addEventListener('click', () => {
-          picked.has(k) ? picked.delete(k) : picked.set(k, ['']);
+          picked.has(k) ? picked.delete(k) : picked.set(k, []);
           drawCal(); drawList();
         });
         grid.append(b);
@@ -94,45 +96,64 @@
       if (!picked.size) { list.append(el('li', { className: 'none', textContent: L.none })); return; }
       [...picked.keys()].sort().forEach((k) => {
         const times = picked.get(k);
-        const slots = el('div', { className: 'slots' });
-        times.forEach((val, i) => {
-          const time = el('input', { type: 'time', name: 'time', value: val, title: L.time });
-          time.setAttribute('aria-label', L.time);
-          time.addEventListener('input', () => { times[i] = time.value; });
-          const slot = el('span', { className: 'slot' }, el('input', { type: 'hidden', name: 'date', value: k }), time);
-          if (times.length > 1) {
-            const rmt = el('button', { type: 'button', className: 'rm', textContent: '×', title: L.remove });
-            rmt.setAttribute('aria-label', L.remove + ': ' + fmtDay.format(parse(k)) + ' ' + (val || ''));
-            rmt.addEventListener('click', () => { times.splice(i, 1); drawList(); });
-            slot.append(rmt);
-          }
-          slots.append(slot);
+        const pair = (t, visible) => {
+          const time = el('input', { type: visible ? 'time' : 'hidden', name: 'time', value: t });
+          return { time, slot: el('span', { className: visible ? 'slot' : 'slot-h' }, el('input', { type: 'hidden', name: 'date', value: k }), time) };
+        };
+        const chips = el('div', { className: 'chips', role: 'group' });
+        chips.setAttribute('aria-label', L.time);
+        const out = el('div', { className: 'slots' });
+        GRID.forEach((t) => {
+          const on = times.includes(t);
+          const c = el('button', { type: 'button', className: 'chip' + (on ? ' on' : ''), textContent: t });
+          c.setAttribute('aria-pressed', on);
+          c.addEventListener('click', () => {
+            const i = times.indexOf(t);
+            if (i >= 0) times.splice(i, 1); else times.push(t);
+            drawList();
+          });
+          chips.append(c);
+          if (on) out.append(pair(t, false).slot);
         });
+        let focusLast = null;
+        times.forEach((t, i) => {
+          if (GRID.includes(t)) return;
+          const p = pair(t, true);
+          p.time.setAttribute('aria-label', L.time);
+          p.time.addEventListener('input', () => { times[i] = p.time.value; });
+          const rmt = el('button', { type: 'button', className: 'rm', textContent: '×', title: L.remove });
+          rmt.setAttribute('aria-label', L.remove + ': ' + (t || L.time));
+          rmt.addEventListener('click', () => { times.splice(i, 1); drawList(); });
+          p.slot.append(rmt);
+          out.append(p.slot);
+          focusLast = p.time;
+        });
+        if (!times.length) out.append(pair('', false).slot); // whole day
         const add = el('button', { type: 'button', className: 'add-time', textContent: '+ ' + L.addtime });
         add.addEventListener('click', () => {
           times.push(''); drawList();
           const row = [...list.querySelectorAll('li[data-day]')].find((x) => x.dataset.day === k);
-          const ins = row && row.querySelectorAll('input[type=time]');
+          const ins = row && row.querySelectorAll('.slot input[type=time]');
           if (ins && ins.length) ins[ins.length - 1].focus();
         });
-        slots.append(add);
         const rm = el('button', { type: 'button', className: 'rm', textContent: '×', title: L.remove });
         rm.setAttribute('aria-label', L.remove + ': ' + fmtDay.format(parse(k)));
         rm.addEventListener('click', () => { picked.delete(k); drawCal(); drawList(); });
-        const li = el('li', {}, el('span', { className: 'd', textContent: fmtDay.format(parse(k)) }), slots, rm);
+        const li = el('li', {}, el('span', { className: 'd', textContent: fmtDay.format(parse(k)) }),
+          el('div', { className: 'times' }, chips, out, add), rm);
         li.dataset.day = k;
         list.append(li);
       });
     }
 
-    // Drop empty "whole day" slots when the same day also has concrete times.
+    // Drop empty slots when the same day also has concrete times.
     const form = dp.closest('form');
     if (form) form.addEventListener('submit', () => {
       list.querySelectorAll('li[data-day]').forEach((li) => {
-        const slots = [...li.querySelectorAll('.slot')];
-        if (!slots.some((sl) => sl.querySelector('input[type=time]').value)) return;
+        const slots = [...li.querySelectorAll('.slot, .slot-h')];
+        if (!slots.some((sl) => sl.querySelector('input[name=time]').value)) return;
         slots.forEach((sl) => {
-          const t = sl.querySelector('input[type=time]');
+          const t = sl.querySelector('input[name=time]');
           if (!t.value) { t.disabled = true; sl.querySelector('input[name=date]').disabled = true; }
         });
       });
