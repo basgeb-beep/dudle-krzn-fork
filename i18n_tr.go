@@ -2,8 +2,6 @@ package main
 
 func init() {
 	messages["tr"] = map[string]string{
-		"tagline":             "Bir tarih bulun. Karmaşa olmadan.",
-		"new_poll":            "Yeni anket",
 		"footer_note":         "Açık kaynaklı planlama – reklam yok, izleme yok.",
 		"language":            "Dil",
 		"home_h1":             "En uygun tarihi birlikte bulun.",

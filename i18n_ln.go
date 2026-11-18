@@ -2,8 +2,6 @@ package main
 
 func init() {
 	messages["ln"] = map[string]string{
-		"tagline":             "Zwá mokolo. Na kobulungana te.",
-		"new_poll":            "Botuni ya sika",
 		"footer_note":         "Kosala mwango na bokaboli ya kode – na ba maloba ya komɛlɛla te, na kolanda te.",
 		"language":            "Lingála",
 		"home_h1":             "Bózwa elongo mokolo ya malamu koleka.",

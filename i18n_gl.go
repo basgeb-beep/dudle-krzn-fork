@@ -2,8 +2,6 @@ package main
 
 func init() {
 	messages["gl"] = map[string]string{
-		"tagline":             "Atopa unha data. Sen caos.",
-		"new_poll":            "Nova enquisa",
 		"footer_note":         "Planificación de código aberto – sen anuncios, sen rastrexo.",
 		"language":            "Idioma",
 		"home_h1":             "Atopade xuntos a mellor data.",

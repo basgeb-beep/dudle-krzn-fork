@@ -2,8 +2,6 @@ package main
 
 func init() {
 	messages["et"] = map[string]string{
-		"tagline":             "Leia sobiv kuupäev. Ilma segaduseta.",
-		"new_poll":            "Uus küsitlus",
 		"footer_note":         "Avatud lähtekoodiga ajaplaneerimine – ilma reklaamide ja jälgimiseta.",
 		"language":            "Keel",
 		"home_h1":             "Leidke koos parim kuupäev.",

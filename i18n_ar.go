@@ -2,8 +2,6 @@ package main
 
 func init() {
 	messages["ar"] = map[string]string{
-		"tagline":             "اعثر على موعد. دون فوضى.",
-		"new_poll":            "استطلاع جديد",
 		"footer_note":         "جدولة مفتوحة المصدر – بلا إعلانات ولا تتبّع.",
 		"language":            "اللغة",
 		"home_h1":             "اعثروا معًا على أنسب موعد.",

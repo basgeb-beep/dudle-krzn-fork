@@ -2,8 +2,6 @@ package main
 
 func init() {
 	messages["bg"] = map[string]string{
-		"tagline":             "Намерете дата. Без хаос.",
-		"new_poll":            "Нова анкета",
 		"footer_note":         "Планиране с отворен код – без реклами и проследяване.",
 		"language":            "Език",
 		"home_h1":             "Намерете заедно най-подходящата дата.",

@@ -2,8 +2,6 @@ package main
 
 func init() {
 	messages["sw"] = map[string]string{
-		"tagline":             "Tafuta tarehe. Bila fujo.",
-		"new_poll":            "Kura mpya ya maoni",
 		"footer_note":         "Upangaji wa chanzo huria – bila matangazo, bila ufuatiliaji.",
 		"language":            "Lugha",
 		"home_h1":             "Tafuteni pamoja tarehe bora.",
