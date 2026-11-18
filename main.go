@@ -26,6 +26,9 @@ func main() {
 	dbPath := flag.String("db", env("DUDLE_DB", "dudle.db"), "SQLite database file (env DUDLE_DB)")
 	baseURL := flag.String("base-url", env("DUDLE_BASE_URL", ""), "public base URL, e.g. https://dudle.example.org (env DUDLE_BASE_URL)")
 	expire := flag.Int("expire-days", expireDef, "delete polls inactive for this many days, 0 = never (env DUDLE_EXPIRE_DAYS)")
+	rateDef, _ := strconv.Atoi(env("DUDLE_RATE_LIMIT", "60"))
+	rate := flag.Int("rate-limit", rateDef, "max write requests (POST) per client per minute, 0 = off (env DUDLE_RATE_LIMIT)")
+	trustProxy := flag.Bool("trust-proxy", env("DUDLE_TRUST_PROXY", "") == "1", "identify clients by X-Forwarded-For; only behind a reverse proxy (env DUDLE_TRUST_PROXY=1)")
 	flag.Parse()
 
 	store, err := OpenStore(*dbPath)
@@ -38,6 +41,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	srv.SetRateLimit(*rate, *trustProxy)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

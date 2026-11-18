@@ -477,3 +477,59 @@ func TestCSVInjection(t *testing.T) {
 		}
 	}
 }
+
+func TestRateLimit(t *testing.T) {
+	srv, err := NewServer(testStore(t), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.SetRateLimit(6, false)
+	h := srv.Handler()
+	post := func(addr string) int {
+		req := httptest.NewRequest("POST", "/create", strings.NewReader(""))
+		req.RemoteAddr = addr
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+	limited := 0
+	for i := 0; i < 10; i++ {
+		if post("10.0.0.1:1234") == http.StatusTooManyRequests {
+			limited++
+		}
+	}
+	if limited == 0 {
+		t.Fatal("expected some requests to be limited")
+	}
+	if post("10.0.0.2:1234") == http.StatusTooManyRequests {
+		t.Fatal("other client must not be limited")
+	}
+	// GET requests are never limited
+	for i := 0; i < 30; i++ {
+		req := httptest.NewRequest("GET", "/healthz", nil)
+		req.RemoteAddr = "10.0.0.1:1234"
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != 200 {
+			t.Fatalf("GET limited: %d", rec.Code)
+		}
+	}
+}
+
+func TestLimiterRefill(t *testing.T) {
+	l := newLimiter(60)
+	now := time.Now()
+	l.now = func() time.Time { return now }
+	for i := 0; i < 20; i++ {
+		if ok, _ := l.allow("a"); !ok {
+			t.Fatalf("burst request %d denied", i)
+		}
+	}
+	if ok, wait := l.allow("a"); ok || wait <= 0 {
+		t.Fatal("expected denial with wait")
+	}
+	now = now.Add(2 * time.Second)
+	if ok, _ := l.allow("a"); !ok {
+		t.Fatal("expected refill after 2s")
+	}
+}
