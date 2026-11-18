@@ -648,3 +648,52 @@ func TestPasswordHash(t *testing.T) {
 		t.Fatal("password check broken")
 	}
 }
+
+func TestBasePath(t *testing.T) {
+	srv, err := NewServer(testStore(t), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.SetBasePath("dudle/")
+	c := &client{t: t, h: srv.Handler()}
+
+	if w := c.do("GET", "/dudle", nil); w.Code != 301 || w.Header().Get("Location") != "/dudle/" {
+		t.Fatalf("bare prefix: %d %q", w.Code, w.Header().Get("Location"))
+	}
+	if w := c.do("GET", "/", nil); w.Code != 404 {
+		t.Fatalf("outside prefix: %d", w.Code)
+	}
+	w := c.do("GET", "/dudle/", nil)
+	body := w.Body.String()
+	if w.Code != 200 || !strings.Contains(body, `href="/dudle/static/style.css"`) || !strings.Contains(body, `href="/dudle/"`) ||
+		!strings.Contains(body, `action="/dudle/create"`) {
+		t.Fatalf("links not prefixed: %d", w.Code)
+	}
+	if strings.Contains(body, `="/static`) || strings.Contains(body, `="/create`) {
+		t.Fatal("unprefixed link left in page")
+	}
+	if w := c.do("GET", "/dudle/static/style.css", nil); w.Code != 200 {
+		t.Fatalf("static: %d", w.Code)
+	}
+	w = c.do("POST", "/dudle/create", url.Values{"title": {"T"}, "kind": {"text"}, "choices": {"A\nB"}})
+	loc := w.Header().Get("Location")
+	if w.Code != 303 || !strings.HasPrefix(loc, "/dudle/p/") {
+		t.Fatalf("redirect: %d %q", w.Code, loc)
+	}
+	parts := strings.Split(loc, "/") // "", dudle, p, id, admin, token
+	id := parts[3]
+	w = c.do("GET", "/dudle/p/"+id, nil, "Host", "example.org")
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "/dudle/p/"+id+"/vote") {
+		t.Fatalf("poll page: %d", w.Code)
+	}
+	if w := c.do("POST", "/dudle/p/"+id+"/vote", url.Values{"name": {"Zoe"}}); w.Code != 303 || w.Header().Get("Location") != "/dudle/p/"+id+"#participants" {
+		t.Fatalf("vote redirect: %d %q", w.Code, w.Header().Get("Location"))
+	}
+	// Unlock cookie path carries the prefix.
+	admin := "/dudle/p/" + id + "/admin/" + parts[5]
+	c.do("POST", admin+"/set_password", url.Values{"role": {"participant"}, "password": {"secret-pw-1"}, "password2": {"secret-pw-1"}})
+	w = c.do("POST", "/dudle/p/"+id+"/unlock", url.Values{"password": {"secret-pw-1"}})
+	if cs := w.Result().Cookies(); w.Code != 303 || len(cs) == 0 || cs[0].Path != "/dudle/p/"+id {
+		t.Fatalf("cookie path: %d %v", w.Code, w.Result().Cookies())
+	}
+}
