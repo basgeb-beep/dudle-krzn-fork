@@ -29,6 +29,7 @@ type Server struct {
 	pages   map[string]*template.Template
 	baseURL string // optional fixed public base URL
 
+	contact       string   // operator contact for accessibility feedback (email, URL or text)
 	basePath      string   // optional URL path prefix, e.g. "/dudle"
 	secret        []byte   // signs unlock cookies
 	unlockLimiter *limiter // brute-force protection for password forms
@@ -70,6 +71,7 @@ type PwForm struct {
 }
 
 var templateFuncs = template.FuncMap{
+	"tag":    func(l string) string { return strings.ReplaceAll(l, "_", "-") },
 	"pw":     func(v *View, role, hash string) PwForm { return PwForm{V: v, Role: role, Active: hash != ""} },
 	"dict":   func(v *View, c Cell, label string) VoteSel { return VoteSel{V: v, Cell: c, Label: label} },
 	"dpData": func(v *View, init string) DPData { return DPData{V: v, Init: init, Rows: []int{0, 1, 2, 3}} },
@@ -82,7 +84,7 @@ func NewServer(store *Store, baseURL string) (*Server, error) {
 	}
 	s := &Server{store: store, baseURL: strings.TrimRight(baseURL, "/"), pages: map[string]*template.Template{},
 		secret: secret, unlockLimiter: newLimiter(10)}
-	for _, name := range []string{"home", "poll", "admin", "error", "unlock"} {
+	for _, name := range []string{"home", "poll", "admin", "error", "unlock", "a11y_de", "a11y_en"} {
 		t, err := template.New("").Funcs(templateFuncs).ParseFS(webFS, "web/templates/layout.html", "web/templates/"+name+".html")
 		if err != nil {
 			return nil, fmt.Errorf("template %s: %w", name, err)
@@ -148,6 +150,7 @@ type View struct {
 
 	UnlockRole   string
 	UnlockAction string
+	Contact      string
 	DeleteID     int64
 	DeleteName   string
 }
@@ -264,6 +267,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", cacheStatic(http.FileServerFS(static))))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "ok") })
 	mux.HandleFunc("GET /{$}", s.home)
+	mux.HandleFunc("GET /accessibility", s.accessibility)
 	mux.HandleFunc("POST /create", s.create)
 	mux.HandleFunc("GET /p/{id}", s.poll)
 	mux.HandleFunc("POST /p/{id}/unlock", s.unlock(roleParticip))
@@ -840,4 +844,30 @@ func pollHash2(p Poll, role, hash string) (participant, admin string) {
 		participant = hash
 	}
 	return
+}
+
+// SetContact sets the operator contact shown in the accessibility statement.
+func (s *Server) SetContact(c string) { s.contact = strings.TrimSpace(c) }
+
+// accessibility serves the accessibility statement (German or English).
+func (s *Server) accessibility(w http.ResponseWriter, r *http.Request) {
+	v := s.newView(r)
+	v.Title = v.T("a11y_link")
+	v.Contact = s.contact
+	page := "a11y_en"
+	if v.Lang == "de" {
+		page = "a11y_de"
+	}
+	s.render(w, page, v)
+}
+
+// ContactHref turns the configured contact into a link target ("" if it is plain text).
+func (v *View) ContactHref() string {
+	switch {
+	case strings.HasPrefix(v.Contact, "http://") || strings.HasPrefix(v.Contact, "https://"):
+		return v.Contact
+	case strings.Contains(v.Contact, "@") && !strings.ContainsAny(v.Contact, " \t"):
+		return "mailto:" + v.Contact
+	}
+	return ""
 }

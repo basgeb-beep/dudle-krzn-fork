@@ -737,3 +737,28 @@ func TestAllLanguagesRender(t *testing.T) {
 		}
 	}
 }
+
+func TestAccessibilityStatement(t *testing.T) {
+	srv, err := NewServer(testStore(t), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &client{t: t, h: srv.Handler()}
+	w := c.do("GET", "/accessibility?lang=de", nil)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "Erklärung zur Barrierefreiheit") || !strings.Contains(w.Body.String(), "noch keine Kontaktmöglichkeit") {
+		t.Fatalf("de statement: %d", w.Code)
+	}
+	srv.SetContact("access@example.org")
+	body := c.do("GET", "/accessibility?lang=fr", nil).Body.String()
+	if !strings.Contains(body, "Accessibility statement") || !strings.Contains(body, `href="mailto:access@example.org"`) {
+		t.Fatal("en fallback statement or contact link missing")
+	}
+	// footer link on every page, skip link translated
+	home := c.do("GET", "/?lang=de", nil).Body.String()
+	if !strings.Contains(home, `href="/accessibility"`) || !strings.Contains(home, "Zum Inhalt springen") {
+		t.Fatal("footer link or skip link missing")
+	}
+	if strings.Contains(home, "autofocus") {
+		t.Fatal("home page must not steal focus")
+	}
+}

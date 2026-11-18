@@ -11,6 +11,8 @@ services:
       DUDLE_TRUST_PROXY: "1"        # nginx appends the real client IP to X-Forwarded-For
       DUDLE_EXPIRE_DAYS: "365"
       DUDLE_RATE_LIMIT: "60"
+      # Contact for accessibility feedback, shown on /accessibility (email or URL):
+      DUDLE_CONTACT: ""
     volumes:
       - dudle-data:/data
 volumes:
