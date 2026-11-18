@@ -174,8 +174,16 @@ textarea { resize: vertical; }
 .picked { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
 .picked li { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px 6px 12px; }
 .picked li.none { background: none; border-style: dashed; color: var(--muted); padding: 10px 12px; }
-.picked .d { font-weight: 600; min-width: 9.5em; }
-.picked .slots { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.picked li { flex-wrap: wrap; align-items: flex-start; }
+.picked .d { font-weight: 600; min-width: 9.5em; padding-top: 6px; }
+.picked .times { flex: 1 1 18em; display: grid; gap: 6px; }
+.picked .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.picked .chip { all: unset; cursor: pointer; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.picked .chip:hover { border-color: var(--accent); }
+.picked .chip.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.picked .chip:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.picked .slot-h { display: none; }
+.picked .slots { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .picked .slot { display: inline-flex; align-items: center; gap: 2px; }
 .picked .slot .rm { width: 26px; height: 26px; font-size: 1rem; }
 .picked .add-time { all: unset; cursor: pointer; color: var(--accent); font-size: .9rem; padding: 4px 6px; border-radius: 6px; }
