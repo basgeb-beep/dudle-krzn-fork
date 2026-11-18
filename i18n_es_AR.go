@@ -2,8 +2,6 @@ package main
 
 func init() {
 	messages["es_AR"] = map[string]string{
-		"tagline":             "Encontrá una fecha. Sin el caos.",
-		"new_poll":            "Nueva encuesta",
 		"footer_note":         "Planificación de código abierto – sin publicidad, sin rastreo.",
 		"language":            "Idioma",
 		"home_h1":             "Encontremos juntos la mejor fecha.",

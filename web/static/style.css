@@ -78,9 +78,10 @@ a:hover { color: var(--accent-hover); }
   width: min(100% - 32px, 920px); margin: 0 auto; padding: 18px 0;
   display: flex; align-items: center; gap: 14px;
 }
+.top .langmenu { margin-inline-start: auto; }
+.orglogo { height: 44px; width: auto; display: block; }
+@media (prefers-color-scheme: dark) { .orglogo { background: #fff; border-radius: 8px; padding: 4px 8px; box-sizing: content-box; } }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 750; font-size: 1.25rem; color: var(--text); text-decoration: none; }
-.tagline { color: var(--muted); font-size: .9rem; flex: 1; }
-@media (max-width: 560px) { .tagline { display: none; } .top .btn { margin-left: auto; } }
 footer {
   width: min(100% - 32px, 920px); margin: 0 auto; padding: 20px 0 28px;
   display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between;

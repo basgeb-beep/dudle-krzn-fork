@@ -2,8 +2,6 @@ package main
 
 func init() {
 	messages["fi"] = map[string]string{
-		"tagline":             "Löydä sopiva päivä. Ilman sekasortoa.",
-		"new_poll":            "Uusi kysely",
 		"footer_note":         "Avoimen lähdekoodin aikataulutus – ei mainoksia, ei seurantaa.",
 		"language":            "Kieli",
 		"home_h1":             "Löytäkää paras päivä yhdessä.",

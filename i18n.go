@@ -85,8 +85,6 @@ func tr(lang, key string, args ...any) string {
 
 var messages = map[string]map[string]string{
 	"en": {
-		"tagline":             "Find a date. Without the chaos.",
-		"new_poll":            "New poll",
 		"footer_note":         "Open source scheduling – no ads, no tracking.",
 		"language":            "Language",
 		"home_h1":             "Find the best date, together.",
@@ -195,8 +193,6 @@ var messages = map[string]map[string]string{
 		"dp_count":            "Selected: {n}",
 	},
 	"de": {
-		"tagline":             "Termine finden. Ohne Chaos.",
-		"new_poll":            "Neue Umfrage",
 		"footer_note":         "Open-Source-Terminfindung – keine Werbung, kein Tracking.",
 		"language":            "Sprache",
 		"home_h1":             "Gemeinsam den besten Termin finden.",

@@ -2,8 +2,6 @@ package main
 
 func init() {
 	messages["hu"] = map[string]string{
-		"tagline":             "Találj egy időpontot. Káosz nélkül.",
-		"new_poll":            "Új szavazás",
 		"footer_note":         "Nyílt forráskódú időpont-egyeztetés – reklámok és követés nélkül.",
 		"language":            "Nyelv",
 		"home_h1":             "Találjátok meg együtt a legjobb időpontot.",

@@ -2,8 +2,6 @@ package main
 
 func init() {
 	messages["eo"] = map[string]string{
-		"tagline":             "Trovu daton. Sen ĥaoso.",
-		"new_poll":            "Nova enketo",
 		"footer_note":         "Malfermitkoda planado – sen reklamoj, sen spurado.",
 		"language":            "Lingvo",
 		"home_h1":             "Trovu kune la plej taŭgan daton.",
