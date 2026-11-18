@@ -149,6 +149,8 @@ type OptionView struct {
 	No      int
 	Best    bool
 	Final   bool
+	IsFull  bool   // no free place left
+	Seats   string // "2/3" when places are limited
 }
 
 type MonthGroup struct {
@@ -314,4 +316,17 @@ func validDeadline(d string) bool {
 		return false
 	}
 	return d >= today()
+}
+
+// parseMaxPer reads the optional number of places per option.
+func parseMaxPer(v string) (int, error) {
+	v = strings.TrimSpace(v)
+	if v == "" || v == "0" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 || n > 9999 {
+		return 0, errors.New("bad number")
+	}
+	return n, nil
 }

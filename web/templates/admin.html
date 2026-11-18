@@ -35,6 +35,14 @@
   </div>
   {{if eq .Poll.Kind "date"}}{{template "durationfield" .}}{{end}}
   <label class="check"><input type="checkbox" name="allow_maybe" value="1"{{if .Poll.AllowMaybe}} checked{{end}}><span>{{.T "f_maybe"}}</span></label>
+  <label class="check">
+    <input type="checkbox" name="hide_results" value="1"{{if .Poll.HideResults}} checked{{end}}>
+    <span>{{.T "hide_results"}}</span>
+  </label>
+  <div class="field">
+    <label for="max_per_option">{{.T "max_label"}}</label>
+    <input id="max_per_option" name="max_per_option" type="number" inputmode="numeric" min="1" max="9999" step="1" value="{{if .Poll.MaxPerOption}}{{.Poll.MaxPerOption}}{{end}}">
+  </div>
   <div class="field">
     <label for="deadline">{{.T "deadline_label"}}</label>
     <input id="deadline" name="deadline" type="date" value="{{.Poll.Deadline}}">

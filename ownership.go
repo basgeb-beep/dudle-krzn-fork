@@ -27,8 +27,13 @@ func (d *PollData) participant(id int64) *Participant {
 }
 
 func (s *Server) canEdit(r *http.Request, p *Poll, pt Participant) bool {
-	if pt.Token == "" || s.isManager(r, p) {
-		return true
+	return pt.Token == "" || s.isManager(r, p) || s.owns(r, p, pt)
+}
+
+// owns reports whether this browser created (or claimed) the row.
+func (s *Server) owns(r *http.Request, p *Poll, pt Participant) bool {
+	if pt.Token == "" {
+		return false
 	}
 	c, err := r.Cookie(ownCookie(p.ID))
 	if err != nil {
