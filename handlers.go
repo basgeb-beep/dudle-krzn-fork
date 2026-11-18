@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"html/template"
@@ -108,8 +110,9 @@ type PwForm struct {
 }
 
 var templateFuncs = template.FuncMap{
-	"tag": func(l string) string { return strings.ReplaceAll(l, "_", "-") },
-	"pw":  func(v *View, role, hash string) PwForm { return PwForm{V: v, Role: role, Active: hash != ""} },
+	"tag":    func(l string) string { return strings.ReplaceAll(l, "_", "-") },
+	"static": func(name string) string { return "/static/" + name + "?v=" + staticVersion },
+	"pw":     func(v *View, role, hash string) PwForm { return PwForm{V: v, Role: role, Active: hash != ""} },
 	"dict": func(v *View, c Cell, o OptionView) VoteSel {
 		return VoteSel{V: v, Cell: c, Label: o.Full, Full: o.IsFull && c.Value != VoteYes}
 	},
@@ -336,9 +339,29 @@ func (s *Server) Handler() http.Handler {
 	return s.withBasePath(s.middleware(s.rateLimit(mux)))
 }
 
+// staticVersion is a hash of all embedded static files. Pages link to
+// /static/x?v=<hash>, so every release gets new URLs and browsers never keep
+// an outdated stylesheet or script.
+var staticVersion = func() string {
+	h := sha256.New()
+	fs.WalkDir(webFS, "web/static", func(p string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			b, _ := webFS.ReadFile(p)
+			h.Write([]byte(p))
+			h.Write(b)
+		}
+		return nil
+	})
+	return hex.EncodeToString(h.Sum(nil))[:12]
+}()
+
 func cacheStatic(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "public, max-age=3600")
+		if r.URL.Query().Get("v") == staticVersion {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "no-cache")
+		}
 		h.ServeHTTP(w, r)
 	})
 }
