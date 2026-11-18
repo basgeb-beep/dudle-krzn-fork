@@ -45,3 +45,18 @@
   </div>
 </div>
 {{end}}
+
+{{define "durationfield"}}
+<div class="field dur">
+  <label for="duration">{{.T "dur_label"}}</label>
+  <div class="durrow">
+    <select id="duration" name="duration">
+      {{range .DurOpts}}<option value="{{.Val}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <span class="dur-custom">
+      <label for="duration_custom">{{.T "dur_custom_min"}}</label>
+      <input id="duration_custom" name="duration_custom" type="number" inputmode="numeric" min="1" max="1440" step="1" value="{{if .DurCustom}}{{.DurCustom}}{{end}}">
+    </span>
+  </div>
+</div>
+{{end}}

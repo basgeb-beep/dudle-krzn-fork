@@ -63,6 +63,42 @@ type DPData struct {
 
 func (d DPData) T(key string, args ...any) string { return d.V.T(key, args...) }
 
+// DurOpt is one entry of the duration select.
+type DurOpt struct {
+	Val      string
+	Label    string
+	Selected bool
+}
+
+// durationText describes a duration for display ("" if none).
+func (v *View) durationText(min int) string {
+	switch {
+	case min <= 0:
+		return ""
+	case min >= DurAllDay:
+		return v.T("dur_allday")
+	}
+	return formatDuration(min)
+}
+
+// setDurationOptions fills the duration select for the current value.
+func (v *View) setDurationOptions(cur int) {
+	v.DurOpts = []DurOpt{{Val: "0", Label: v.T("dur_none"), Selected: cur == 0}}
+	std := cur == 0 || cur == DurAllDay
+	for _, m := range durationChoices {
+		v.DurOpts = append(v.DurOpts, DurOpt{Val: strconv.Itoa(m), Label: formatDuration(m), Selected: cur == m})
+		if cur == m {
+			std = true
+		}
+	}
+	v.DurOpts = append(v.DurOpts,
+		DurOpt{Val: strconv.Itoa(DurAllDay), Label: v.T("dur_allday"), Selected: cur == DurAllDay},
+		DurOpt{Val: "custom", Label: v.T("dur_custom"), Selected: !std})
+	if !std {
+		v.DurCustom = cur
+	}
+}
+
 // PwForm is the data for one password form on the admin page.
 type PwForm struct {
 	V      *View
@@ -122,6 +158,7 @@ type Draft struct {
 	Choices     string
 	DatesInit   string
 	AllowMaybe  bool
+	Duration    int
 }
 
 type View struct {
@@ -151,6 +188,9 @@ type View struct {
 	UnlockRole   string
 	UnlockAction string
 	Contact      string
+	DurationText string
+	DurOpts      []DurOpt
+	DurCustom    int
 	DeleteID     int64
 	DeleteName   string
 }
@@ -324,6 +364,7 @@ func (s *Server) middleware(next http.Handler) http.Handler {
 func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	v := s.newView(r)
 	v.Draft = Draft{Kind: KindDate, AllowMaybe: true}
+	v.setDurationOptions(0)
 	s.render(w, "home", v)
 }
 
@@ -344,11 +385,23 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("kind") == KindText {
 		d.Kind = KindText
 	}
+	durErr := false
+	if dur, err := parseDuration(r.FormValue("duration"), r.FormValue("duration_custom")); err == nil {
+		d.Duration = dur
+	} else {
+		durErr = true
+		if n, e := strconv.Atoi(strings.TrimSpace(r.FormValue("duration_custom"))); e == nil && n > 0 {
+			d.Duration = n
+		}
+	}
 	v.Draft = d
+	v.setDurationOptions(d.Duration)
 
-	labels, msg := s.parseOptions(d.Kind, r, v)
+	labels, msg := s.parseOptions(d.Kind, r, d.Duration == DurAllDay)
 	if msg == "" {
 		switch {
+		case durErr:
+			msg = "err_duration"
 		case d.Title == "" || tooLong(d.Title, maxTitle):
 			msg = "err_title"
 		case tooLong(d.Description, maxDescription):
@@ -363,7 +416,7 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p := &Poll{ID: randID(10), AdminToken: randID(26), Title: d.Title, Description: d.Description,
-		Kind: d.Kind, AllowMaybe: d.AllowMaybe}
+		Kind: d.Kind, AllowMaybe: d.AllowMaybe, Duration: d.Duration}
 	if err := s.store.CreatePoll(p, labels); err != nil {
 		s.serverError(w, r, err)
 		return
@@ -373,11 +426,15 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 
 // parseOptions reads option labels from a form depending on the poll kind.
 // It returns an i18n message key on validation failure.
-func (s *Server) parseOptions(kind string, r *http.Request, _ *View) ([]string, string) {
+func (s *Server) parseOptions(kind string, r *http.Request, allDay bool) ([]string, string) {
 	var labels []string
 	var err error
 	if kind == KindDate {
-		labels, err = parseDates(r.Form["date"], r.Form["time"])
+		times := r.Form["time"]
+		if allDay {
+			times = nil // all-day options carry no time
+		}
+		labels, err = parseDates(r.Form["date"], times)
 	} else {
 		labels, err = parseChoices(r.FormValue("choices"))
 	}
@@ -446,6 +503,7 @@ func (s *Server) pollView(r *http.Request, d *PollData) *View {
 			When: c.CreatedAt.Format("2006-01-02 15:04")})
 	}
 	v.PollURL = s.absURL(r, "/p/"+d.Poll.ID)
+	v.DurationText = v.durationText(d.Poll.Duration)
 	return v
 }
 
@@ -699,6 +757,7 @@ func (s *Server) adminView(r *http.Request, d *PollData) *View {
 	v := s.pollView(r, d)
 	v.Title = v.T("admin_title") + " · " + d.Poll.Title
 	v.AdminURL = s.absURL(r, "/p/"+d.Poll.ID+"/admin/"+d.Poll.AdminToken)
+	v.setDurationOptions(d.Poll.Duration)
 	if r.URL.Query().Get("saved") == "1" {
 		v.Notice = v.T("saved")
 	}
@@ -737,11 +796,16 @@ func (s *Server) adminAction(w http.ResponseWriter, r *http.Request) {
 		case tooLong(desc, maxDescription):
 			msg = "err_desc"
 		default:
-			err = s.store.UpdateSettings(id, title, desc, r.FormValue("allow_maybe") == "1", r.FormValue("closed") == "1")
+			dur, derr := parseDuration(r.FormValue("duration"), r.FormValue("duration_custom"))
+			if derr != nil {
+				msg = "err_duration"
+				break
+			}
+			err = s.store.UpdateSettings(id, title, desc, r.FormValue("allow_maybe") == "1", r.FormValue("closed") == "1", dur)
 		}
 	case "add_options":
 		var labels []string
-		labels, msg = s.parseOptions(d.Poll.Kind, r, nil)
+		labels, msg = s.parseOptions(d.Poll.Kind, r, d.Poll.Duration == DurAllDay)
 		if msg == "" {
 			if len(d.Options)+len(labels) > maxOptions {
 				msg = "err_too_many"

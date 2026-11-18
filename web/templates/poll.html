@@ -11,6 +11,7 @@
     {{if .Poll.Closed}}<span class="badge">{{.T "closed"}}</span>{{end}}
   </div>
   {{if .Poll.Description}}<p class="desc">{{.Poll.Description}}</p>{{end}}
+  {{if .DurationText}}<p class="dur-info">{{.T "dur_info" .DurationText}}</p>{{end}}
 </article>
 
 {{if .Error}}<div class="alert error" role="alert">{{.Error}}</div>{{end}}

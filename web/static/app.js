@@ -168,6 +168,18 @@
     drawCal(); drawList();
   });
 
+  // ---- duration select: show the free entry only for "custom", hide times for "all day"
+  document.querySelectorAll('select#duration').forEach((sel) => {
+    const custom = document.querySelector('.dur-custom');
+    const dp = sel.closest('form')?.querySelector('.datepicker');
+    const sync = () => {
+      if (custom) custom.hidden = sel.value !== 'custom';
+      if (dp) dp.classList.toggle('allday', sel.value === '1440');
+    };
+    sel.addEventListener('change', sync);
+    sync();
+  });
+
   // ---- copy buttons ------------------------------------------------------------
   document.querySelectorAll('[data-copy]').forEach((btn) => {
     btn.addEventListener('click', async () => {

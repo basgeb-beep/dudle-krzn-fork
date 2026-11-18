@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"io"
 	"net/http"
@@ -193,7 +194,7 @@ func TestStoreLifecycle(t *testing.T) {
 		t.Fatalf("duplicate labels must be ignored, got %d options", len(d.Options))
 	}
 
-	if err := st.UpdateSettings("abc", "New", "desc", false, true); err != nil {
+	if err := st.UpdateSettings("abc", "New", "desc", false, true, 0); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.SaveVote("abc", 0, "Bob", nil); !errors.Is(err, ErrClosed) {
@@ -760,5 +761,107 @@ func TestAccessibilityStatement(t *testing.T) {
 	}
 	if strings.Contains(home, "autofocus") {
 		t.Fatal("home page must not steal focus")
+	}
+}
+
+func TestParseDuration(t *testing.T) {
+	ok := map[[2]string]int{{"", ""}: 0, {"0", ""}: 0, {"90", ""}: 90, {"1440", ""}: 1440, {"custom", " 25 "}: 25}
+	for in, want := range ok {
+		if got, err := parseDuration(in[0], in[1]); err != nil || got != want {
+			t.Errorf("%v: got %d, %v want %d", in, got, err, want)
+		}
+	}
+	for _, in := range [][2]string{{"custom", ""}, {"custom", "0"}, {"custom", "1441"}, {"-5", ""}, {"abc", ""}, {"99999", ""}} {
+		if _, err := parseDuration(in[0], in[1]); err == nil {
+			t.Errorf("%v accepted", in)
+		}
+	}
+	if timeRange("09:00", 90) != "09:00–10:30" || timeRange("23:30", 60) != "23:30–00:30" ||
+		timeRange("09:00", 0) != "09:00" || timeRange("09:00", DurAllDay) != "09:00" {
+		t.Error("timeRange wrong")
+	}
+	if formatDuration(150) != "2:30 h" || formatDuration(15) != "0:15 h" {
+		t.Error("formatDuration wrong")
+	}
+}
+
+func TestDurationFlow(t *testing.T) {
+	c := newClient(t)
+	create := func(extra url.Values) *httptest.ResponseRecorder {
+		f := url.Values{"title": {"D"}, "kind": {"date"}, "date": {"2026-12-01", "2026-12-02"}, "time": {"09:00", "13:30"}}
+		for k, v := range extra {
+			f[k] = v
+		}
+		return c.do("POST", "/create", f)
+	}
+	// 1.5 h: columns show ranges, poll page names the duration
+	w := create(url.Values{"duration": {"90"}})
+	if w.Code != 303 {
+		t.Fatalf("create: %d", w.Code)
+	}
+	id := strings.Split(w.Header().Get("Location"), "/")[2]
+	body := c.do("GET", "/p/"+id+"?lang=de", nil).Body.String()
+	if !strings.Contains(body, "09:00–10:30") || !strings.Contains(body, "13:30–15:00") || !strings.Contains(body, "Dauer: 1:30 h") {
+		t.Fatalf("ranges or duration text missing")
+	}
+	// free entry
+	w = create(url.Values{"duration": {"custom"}, "duration_custom": {"25"}})
+	id2 := strings.Split(w.Header().Get("Location"), "/")[2]
+	if b := c.do("GET", "/p/"+id2, nil).Body.String(); !strings.Contains(b, "09:00–09:25") || !strings.Contains(b, "Duration: 0:25 h") {
+		t.Fatal("custom duration missing")
+	}
+	// all day: times are dropped
+	w = create(url.Values{"duration": {"1440"}})
+	id3 := strings.Split(w.Header().Get("Location"), "/")[2]
+	b3 := c.do("GET", "/p/"+id3, nil).Body.String()
+	if strings.Contains(b3, "09:00") || !strings.Contains(b3, "Duration: All day") {
+		t.Fatal("all-day poll should have no times")
+	}
+	// invalid
+	if w := create(url.Values{"duration": {"custom"}, "duration_custom": {"5000"}}); w.Code != 422 || !strings.Contains(w.Body.String(), "between 1 and 1440") {
+		t.Fatalf("invalid duration: %d", w.Code)
+	}
+	// create form offers the choices
+	home := c.do("GET", "/", nil).Body.String()
+	for _, want := range []string{`value="15"`, `value="30"`, `value="45"`, `value="60"`, `value="90"`, `value="120"`, `value="150"`, `value="180"`, `value="1440"`, `value="custom"`, "0:15 h", "2:30 h"} {
+		if !strings.Contains(home, want) {
+			t.Errorf("home form lacks %s", want)
+		}
+	}
+	// admin can change it
+	loc := create(url.Values{"duration": {"60"}}).Header().Get("Location")
+	parts := strings.Split(loc, "/")
+	admin := "/p/" + parts[2] + "/admin/" + parts[4]
+	if w := c.do("POST", admin+"/settings", url.Values{"title": {"D"}, "duration": {"120"}}); w.Code != 303 {
+		t.Fatalf("settings: %d", w.Code)
+	}
+	if b := c.do("GET", "/p/"+parts[2], nil).Body.String(); !strings.Contains(b, "09:00–11:00") {
+		t.Fatal("duration change not applied")
+	}
+}
+
+func TestMigrateOldDatabase(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`CREATE TABLE polls (id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL,
+		admin_token TEXT NOT NULL, closed INTEGER NOT NULL DEFAULT 0, allow_maybe INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+		INSERT INTO polls VALUES ('old','T','','text','tok',0,1,1,1);`); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	st, err := OpenStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	p, err := st.GetPoll("old")
+	if err != nil || p.Duration != 0 || p.PwAdmin != "" {
+		t.Fatalf("migrated poll: %+v %v", p, err)
+	}
+	if err := st.SetPassword("old", "admin", "x"); err != nil {
+		t.Fatal(err)
 	}
 }

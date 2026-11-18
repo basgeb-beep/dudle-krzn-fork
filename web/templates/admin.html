@@ -33,6 +33,7 @@
     <label for="description">{{.T "f_desc"}}</label>
     <textarea id="description" name="description" rows="3" maxlength="2000">{{.Poll.Description}}</textarea>
   </div>
+  {{if eq .Poll.Kind "date"}}{{template "durationfield" .}}{{end}}
   <label class="check"><input type="checkbox" name="allow_maybe" value="1"{{if .Poll.AllowMaybe}} checked{{end}}><span>{{.T "f_maybe"}}</span></label>
   <label class="check"><input type="checkbox" name="closed" value="1"{{if .Poll.Closed}} checked{{end}}><span>{{.T "close_poll"}}</span></label>
   <button class="btn primary" type="submit">{{.T "save"}}</button>

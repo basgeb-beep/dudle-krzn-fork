@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -162,7 +163,7 @@ func langTable(m map[string][]string, lang string) []string {
 }
 
 // viewOption formats an option label for display in the given language.
-func viewOption(kind string, o Option, lang string) OptionView {
+func viewOption(kind string, o Option, lang string, duration int) OptionView {
 	ov := OptionView{ID: o.ID, Label: o.Label, Full: o.Label}
 	if kind != KindDate {
 		return ov
@@ -178,6 +179,9 @@ func viewOption(kind string, o Option, lang string) OptionView {
 	mon := langTable(months, lang)[t.Month()-1]
 	ov.Month = fmt.Sprintf("%s %d", mon, t.Year())
 	ov.Time = timePart
+	if timePart != "" {
+		ov.Time = timeRange(timePart, duration)
+	}
 	switch {
 	case lang == "en":
 		ov.Full = fmt.Sprintf("%s, %s %d, %d", ov.Weekday, mon, t.Day(), t.Year())
@@ -187,7 +191,7 @@ func viewOption(kind string, o Option, lang string) OptionView {
 		ov.Full = fmt.Sprintf("%s, %d %s %d", ov.Weekday, t.Day(), mon, t.Year())
 	}
 	if timePart != "" {
-		ov.Full += ", " + timePart
+		ov.Full += ", " + ov.Time
 	}
 	return ov
 }
@@ -204,7 +208,7 @@ type Summary struct {
 func Summarize(d *PollData, lang string) Summary {
 	var s Summary
 	for _, o := range d.Options {
-		ov := viewOption(d.Poll.Kind, o, lang)
+		ov := viewOption(d.Poll.Kind, o, lang, d.Poll.Duration)
 		for _, p := range d.Participants {
 			switch p.Votes[o.ID] {
 			case VoteYes:
@@ -240,4 +244,47 @@ func Summarize(d *PollData, lang string) Summary {
 		}
 	}
 	return s
+}
+
+// DurAllDay is the stored duration for "all day" options.
+const DurAllDay = 1440
+
+// durationChoices are the quick-pick durations in minutes.
+var durationChoices = []int{15, 30, 45, 60, 90, 120, 150, 180}
+
+var errBadDuration = errors.New("bad duration")
+
+// parseDuration reads the duration select ("0", minutes, "1440" or "custom")
+// and the free entry in minutes.
+func parseDuration(sel, custom string) (int, error) {
+	sel = strings.TrimSpace(sel)
+	if sel == "" || sel == "0" {
+		return 0, nil
+	}
+	if sel == "custom" {
+		sel = strings.TrimSpace(custom)
+	}
+	n, err := strconv.Atoi(sel)
+	if err != nil || n < 1 || n > DurAllDay {
+		return 0, errBadDuration
+	}
+	return n, nil
+}
+
+// formatDuration renders minutes as H:MM ("1:30 h"); all-day is handled by the caller.
+func formatDuration(min int) string {
+	return fmt.Sprintf("%d:%02d h", min/60, min%60)
+}
+
+// timeRange turns a start time and a duration into "09:00–10:30". Without a
+// duration, or for all-day polls, it returns the start time unchanged.
+func timeRange(start string, duration int) string {
+	if duration <= 0 || duration >= DurAllDay {
+		return start
+	}
+	t, err := time.Parse("15:04", start)
+	if err != nil {
+		return start
+	}
+	return start + "–" + t.Add(time.Duration(duration)*time.Minute).Format("15:04")
 }
