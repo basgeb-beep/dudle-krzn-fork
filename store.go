@@ -62,6 +62,9 @@ type Participant struct {
 	Name      string
 	CreatedAt time.Time
 	Votes     map[int64]int // option id -> value
+	// Token proves ownership of the row (kept in the creator's browser).
+	// Empty means unclaimed: invited or created before ownership existed.
+	Token string
 }
 
 type Comment struct {
@@ -108,7 +111,8 @@ CREATE TABLE IF NOT EXISTS participants (
 	id         INTEGER PRIMARY KEY AUTOINCREMENT,
 	poll_id    TEXT NOT NULL REFERENCES polls(id) ON DELETE CASCADE,
 	name       TEXT NOT NULL,
-	created_at INTEGER NOT NULL
+	created_at INTEGER NOT NULL,
+	token      TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS participants_poll ON participants(poll_id);
 CREATE TABLE IF NOT EXISTS votes (
@@ -144,15 +148,16 @@ func OpenStore(path string) (*Store, error) {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	// Databases created before access control existed lack the password columns.
-	for _, col := range []string{"pw_participant TEXT", "pw_admin TEXT", "duration INTEGER"} {
-		col, typ, _ := strings.Cut(col, " ")
+	for _, spec := range []string{"polls pw_participant TEXT", "polls pw_admin TEXT", "polls duration INTEGER", "participants token TEXT"} {
+		parts := strings.Fields(spec)
+		table, col, typ := parts[0], parts[1], parts[2]
 		var n int
-		if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('polls') WHERE name=?`, col).Scan(&n); err != nil {
+		if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name=?`, table, col).Scan(&n); err != nil {
 			db.Close()
 			return nil, fmt.Errorf("migrate: %w", err)
 		}
 		if n == 0 {
-			if _, err := db.Exec(`ALTER TABLE polls ADD COLUMN ` + col + ` ` + typ + ` NOT NULL DEFAULT ` + map[string]string{"TEXT": "''", "INTEGER": "0"}[typ]); err != nil {
+			if _, err := db.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + col + ` ` + typ + ` NOT NULL DEFAULT ` + map[string]string{"TEXT": "''", "INTEGER": "0"}[typ]); err != nil {
 				db.Close()
 				return nil, fmt.Errorf("migrate: %w", err)
 			}
@@ -201,7 +206,7 @@ func (s *Store) SetPassword(pollID, role, hash string) error {
 func (s *Store) InviteParticipants(pollID string, names []string) (int, error) {
 	n := 0
 	for _, name := range names {
-		_, err := s.SaveVote(pollID, 0, name, map[int64]int{})
+		_, err := s.SaveVote(pollID, 0, name, map[int64]int{}, "")
 		switch {
 		case err == nil:
 			n++
@@ -290,14 +295,14 @@ func (s *Store) Load(id string) (*PollData, error) {
 	}
 
 	idx := map[int64]int{}
-	rows, err = s.db.Query(`SELECT id,name,created_at FROM participants WHERE poll_id=? ORDER BY id`, id)
+	rows, err = s.db.Query(`SELECT id,name,created_at,token FROM participants WHERE poll_id=? ORDER BY id`, id)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var pt Participant
 		var ts int64
-		if err := rows.Scan(&pt.ID, &pt.Name, &ts); err != nil {
+		if err := rows.Scan(&pt.ID, &pt.Name, &ts, &pt.Token); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -364,8 +369,9 @@ func touch(tx *sql.Tx, pollID string) error {
 }
 
 // SaveVote creates (pid == 0) or updates a participant and replaces their votes.
-// Votes for unknown options are ignored. It returns the participant id.
-func (s *Store) SaveVote(pollID string, pid int64, name string, votes map[int64]int) (int64, error) {
+// Votes for unknown options are ignored. token is stored for a new row and
+// claims an existing row that has none yet. It returns the participant id.
+func (s *Store) SaveVote(pollID string, pid int64, name string, votes map[int64]int, token string) (int64, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return 0, err
@@ -425,7 +431,7 @@ func (s *Store) SaveVote(pollID string, pid int64, name string, votes map[int64]
 	}
 
 	if pid == 0 {
-		res, err := tx.Exec(`INSERT INTO participants (poll_id,name,created_at) VALUES (?,?,?)`, pollID, name, time.Now().Unix())
+		res, err := tx.Exec(`INSERT INTO participants (poll_id,name,created_at,token) VALUES (?,?,?,?)`, pollID, name, time.Now().Unix(), token)
 		if err != nil {
 			return 0, err
 		}
@@ -436,7 +442,7 @@ func (s *Store) SaveVote(pollID string, pid int64, name string, votes map[int64]
 		if _, ok := existing[pid]; !ok {
 			return 0, ErrNotFound
 		}
-		if _, err := tx.Exec(`UPDATE participants SET name=? WHERE id=?`, name, pid); err != nil {
+		if _, err := tx.Exec(`UPDATE participants SET name=?, token=CASE WHEN token='' THEN ? ELSE token END WHERE id=?`, name, token, pid); err != nil {
 			return 0, err
 		}
 		if _, err := tx.Exec(`DELETE FROM votes WHERE participant_id=?`, pid); err != nil {

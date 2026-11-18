@@ -31,6 +31,8 @@ func main() {
 	trustProxy := flag.Bool("trust-proxy", env("DUDLE_TRUST_PROXY", "") == "1", "identify clients by X-Forwarded-For; only behind a reverse proxy (env DUDLE_TRUST_PROXY=1)")
 	basePath := flag.String("base-path", env("DUDLE_BASE_PATH", ""), "serve under this URL path prefix, e.g. /dudle (env DUDLE_BASE_PATH)")
 	contact := flag.String("contact", env("DUDLE_CONTACT", ""), "contact (email or URL) for accessibility feedback, shown in the accessibility statement (env DUDLE_CONTACT)")
+	imprint := flag.String("imprint-url", env("DUDLE_IMPRINT_URL", ""), "link to the legal notice (Impressum), shown in the footer (env DUDLE_IMPRINT_URL)")
+	privacy := flag.String("privacy-url", env("DUDLE_PRIVACY_URL", ""), "link to the privacy policy, shown in the footer (env DUDLE_PRIVACY_URL)")
 	flag.Parse()
 
 	store, err := OpenStore(*dbPath)
@@ -45,6 +47,7 @@ func main() {
 	}
 
 	srv.SetContact(*contact)
+	srv.SetLegalLinks(*imprint, *privacy)
 	srv.SetBasePath(*basePath)
 	srv.SetRateLimit(*rate, *trustProxy)
 

@@ -64,7 +64,7 @@
         <tr>
           <th class="name" scope="row">
             <span class="who">{{.Name}}</span>
-            {{if not $.Poll.Closed}}<a class="icon-btn" href="/p/{{$.Poll.ID}}?edit={{.ID}}#vote" title="{{$.T "edit"}}" aria-label="{{$.T "edit"}}: {{.Name}}"><span aria-hidden="true">✎</span></a>
+            {{if and (not $.Poll.Closed) .CanEdit}}<a class="icon-btn" href="/p/{{$.Poll.ID}}?edit={{.ID}}#vote" title="{{$.T "edit"}}" aria-label="{{$.T "edit"}}: {{.Name}}"><span aria-hidden="true">✎</span></a>
             <a class="icon-btn" href="/p/{{$.Poll.ID}}?delete={{.ID}}#participants" title="{{$.T "delete"}}" aria-label="{{$.T "delete"}}: {{.Name}}"><span aria-hidden="true">✕</span></a>{{end}}
           </th>
           {{range .Cells}}<td class="cell c{{.Value}}"><span class="vs" title="{{$.VoteLabel .Value}}"><span aria-hidden="true">{{$.Symbol .Value}}</span><span class="sr">{{$.VoteLabel .Value}}</span></span></td>{{end}}

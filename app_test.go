@@ -159,14 +159,14 @@ func TestStoreLifecycle(t *testing.T) {
 	}
 	a, b := d.Options[0].ID, d.Options[1].ID
 
-	pid, err := st.SaveVote("abc", 0, "Anna", map[int64]int{a: VoteYes, b: VoteMaybe, 9999: VoteYes})
+	pid, err := st.SaveVote("abc", 0, "Anna", map[int64]int{a: VoteYes, b: VoteMaybe, 9999: VoteYes}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.SaveVote("abc", 0, "anna", nil); !errors.Is(err, ErrNameTaken) {
+	if _, err := st.SaveVote("abc", 0, "anna", nil, ""); !errors.Is(err, ErrNameTaken) {
 		t.Fatalf("expected ErrNameTaken, got %v", err)
 	}
-	if _, err := st.SaveVote("abc", pid, "Anna", map[int64]int{a: VoteNo, b: VoteYes}); err != nil {
+	if _, err := st.SaveVote("abc", pid, "Anna", map[int64]int{a: VoteNo, b: VoteYes}, ""); err != nil {
 		t.Fatalf("editing own vote with same name must work: %v", err)
 	}
 	d, _ = st.Load("abc")
@@ -197,7 +197,7 @@ func TestStoreLifecycle(t *testing.T) {
 	if err := st.UpdateSettings("abc", "New", "desc", false, true, 0); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.SaveVote("abc", 0, "Bob", nil); !errors.Is(err, ErrClosed) {
+	if _, err := st.SaveVote("abc", 0, "Bob", nil, ""); !errors.Is(err, ErrClosed) {
 		t.Fatalf("closed poll must reject votes, got %v", err)
 	}
 
@@ -214,9 +214,9 @@ func TestStoreVoteScopedToPoll(t *testing.T) {
 	st.CreatePoll(&Poll{ID: "p1", Title: "1", Kind: KindText, AdminToken: "x"}, []string{"A"})
 	st.CreatePoll(&Poll{ID: "p2", Title: "2", Kind: KindText, AdminToken: "y"}, []string{"B"})
 	d1, _ := st.Load("p1")
-	pid, _ := st.SaveVote("p1", 0, "Anna", map[int64]int{d1.Options[0].ID: VoteYes})
+	pid, _ := st.SaveVote("p1", 0, "Anna", map[int64]int{d1.Options[0].ID: VoteYes}, "")
 	// A participant of poll 1 must not be editable via poll 2.
-	if _, err := st.SaveVote("p2", pid, "Eve", nil); !errors.Is(err, ErrNotFound) {
+	if _, err := st.SaveVote("p2", pid, "Eve", nil, ""); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("cross-poll edit must fail, got %v", err)
 	}
 	// Deleting via the wrong poll is a no-op.
@@ -244,8 +244,9 @@ func TestDeleteInactive(t *testing.T) {
 // ---------------------------------------------------------------- HTTP
 
 type client struct {
-	t *testing.T
-	h http.Handler
+	t   *testing.T
+	h   http.Handler
+	jar map[string]string // optional: keep cookies like a browser
 }
 
 func (c *client) do(method, path string, form url.Values, hdr ...string) *httptest.ResponseRecorder {
@@ -260,8 +261,16 @@ func (c *client) do(method, path string, form url.Values, hdr ...string) *httpte
 	for i := 0; i+1 < len(hdr); i += 2 {
 		r.Header.Set(hdr[i], hdr[i+1])
 	}
+	for k, v := range c.jar {
+		r.AddCookie(&http.Cookie{Name: k, Value: v})
+	}
 	w := httptest.NewRecorder()
 	c.h.ServeHTTP(w, r)
+	if c.jar != nil {
+		for _, ck := range w.Result().Cookies() {
+			c.jar[ck.Name] = ck.Value
+		}
+	}
 	return w
 }
 
@@ -275,6 +284,7 @@ func newClient(t *testing.T) *client {
 
 func TestHTTPFullFlow(t *testing.T) {
 	c := newClient(t)
+	c.jar = map[string]string{}
 
 	// Home renders (both languages).
 	for _, lang := range []string{"en", "de"} {
@@ -286,6 +296,8 @@ func TestHTTPFullFlow(t *testing.T) {
 			t.Fatal("security headers missing")
 		}
 	}
+
+	delete(c.jar, "lang") // the language links above set a cookie
 
 	// Validation errors keep the form and return 422.
 	w := c.do("POST", "/create", url.Values{"title": {"  "}, "kind": {"text"}, "choices": {"a"}})
@@ -863,5 +875,76 @@ func TestMigrateOldDatabase(t *testing.T) {
 	}
 	if err := st.SetPassword("old", "admin", "x"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestOwnEntriesOnly(t *testing.T) {
+	srv, err := NewServer(testStore(t), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := srv.Handler()
+	anna := &client{t: t, h: h, jar: map[string]string{}}
+	eve := &client{t: t, h: h, jar: map[string]string{}}
+	org := &client{t: t, h: h, jar: map[string]string{}}
+
+	loc := org.do("POST", "/create", url.Values{"title": {"T"}, "kind": {"text"}, "choices": {"A"}}).Header().Get("Location")
+	parts := strings.Split(loc, "/")
+	id, admin := parts[2], loc
+	opt := regexp.MustCompile(`name="o_(\d+)"`).FindStringSubmatch(anna.do("GET", "/p/"+id, nil).Body.String())[1]
+
+	if w := anna.do("POST", "/p/"+id+"/vote", url.Values{"name": {"Anna"}, "o_" + opt: {"1"}}); w.Code != 303 {
+		t.Fatalf("anna vote: %d", w.Code)
+	}
+	pid := regexp.MustCompile(`\?edit=(\d+)#vote`).FindStringSubmatch(anna.do("GET", "/p/"+id, nil).Body.String())[1]
+
+	// Eve sees no edit/delete buttons and cannot change or delete Anna's row.
+	if strings.Contains(eve.do("GET", "/p/"+id, nil).Body.String(), "?edit="+pid) {
+		t.Fatal("foreign row offers edit link")
+	}
+	if w := eve.do("POST", "/p/"+id+"/vote", url.Values{"pid": {pid}, "name": {"Hacked"}, "o_" + opt: {"0"}}); w.Code != 403 {
+		t.Fatalf("foreign edit: %d", w.Code)
+	}
+	if w := eve.do("POST", "/p/"+id+"/delete_participant", url.Values{"participant": {pid}}); w.Code != 403 {
+		t.Fatalf("foreign delete: %d", w.Code)
+	}
+	// Anna can edit her own row.
+	if w := anna.do("POST", "/p/"+id+"/vote", url.Values{"pid": {pid}, "name": {"Anna B"}, "o_" + opt: {"2"}}); w.Code != 303 {
+		t.Fatalf("own edit: %d", w.Code)
+	}
+	// The organiser (opened the admin page) may edit any row.
+	org.do("GET", admin, nil)
+	if w := org.do("POST", "/p/"+id+"/vote", url.Values{"pid": {pid}, "name": {"Anna"}, "o_" + opt: {"1"}}); w.Code != 303 {
+		t.Fatalf("manager edit: %d", w.Code)
+	}
+	// Invited rows are claimable once: Ben fills his, afterwards Eve can't touch it.
+	org.do("POST", admin+"/invite", url.Values{"names": {"Ben"}})
+	ben := &client{t: t, h: h, jar: map[string]string{}}
+	body := ben.do("GET", "/p/"+id, nil).Body.String()
+	ids := regexp.MustCompile(`\?edit=(\d+)#vote`).FindAllStringSubmatch(body, -1)
+	if len(ids) != 1 {
+		t.Fatalf("ben should see exactly the unclaimed row, got %d", len(ids))
+	}
+	bid := ids[0][1]
+	if w := ben.do("POST", "/p/"+id+"/vote", url.Values{"pid": {bid}, "name": {"Ben"}, "o_" + opt: {"1"}}); w.Code != 303 {
+		t.Fatalf("claim: %d", w.Code)
+	}
+	if w := eve.do("POST", "/p/"+id+"/vote", url.Values{"pid": {bid}, "name": {"X"}}); w.Code != 403 {
+		t.Fatalf("claimed row still open: %d", w.Code)
+	}
+	if w := ben.do("POST", "/p/"+id+"/vote", url.Values{"pid": {bid}, "name": {"Ben"}, "o_" + opt: {"0"}}); w.Code != 303 {
+		t.Fatalf("ben edits own: %d", w.Code)
+	}
+}
+
+func TestRedactPathAndLegalLinks(t *testing.T) {
+	if got := redactPath("/p/abc/admin/SECRET/settings"); strings.Contains(got, "SECRET") {
+		t.Fatalf("not redacted: %s", got)
+	}
+	srv, _ := NewServer(testStore(t), "")
+	srv.SetLegalLinks("https://example.org/impressum", "https://example.org/datenschutz")
+	body := (&client{t: t, h: srv.Handler()}).do("GET", "/?lang=de", nil).Body.String()
+	if !strings.Contains(body, `href="https://example.org/impressum">Impressum`) || !strings.Contains(body, `href="https://example.org/datenschutz">Datenschutz`) {
+		t.Fatal("legal links missing")
 	}
 }

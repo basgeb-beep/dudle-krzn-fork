@@ -11,8 +11,10 @@ services:
       DUDLE_TRUST_PROXY: "1"        # nginx appends the real client IP to X-Forwarded-For
       DUDLE_EXPIRE_DAYS: "365"
       DUDLE_RATE_LIMIT: "60"
-      # Contact for accessibility feedback, shown on /accessibility (email or URL):
-      DUDLE_CONTACT: ""
+      # Kreis Mettmann: accessibility feedback, legal notice, privacy policy
+      DUDLE_CONTACT: "https://www.kreis-mettmann.de/Quickmenu/Fehler-melden/"
+      DUDLE_IMPRINT_URL: "https://www.kreis-mettmann.de/Quickmenu/Impressum/"
+      DUDLE_PRIVACY_URL: "https://www.kreis-mettmann.de/Quickmenu/Datenschutz/"
     volumes:
       - dudle-data:/data
 volumes:
