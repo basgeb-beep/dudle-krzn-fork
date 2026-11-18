@@ -18,7 +18,7 @@
               placeholder="{{.T "f_desc_ph"}}">{{.Draft.Description}}</textarea>
   </div>
 
-  <fieldset class="field kind">
+  <fieldset class="field kind" data-step="kind">
     <legend>{{.T "f_kind"}}</legend>
     <div class="segmented">
       <input type="radio" id="kind-date" name="kind" value="date"{{if eq .Draft.Kind "date"}} checked{{end}}>
@@ -28,23 +28,26 @@
     </div>
   </fieldset>
 
-  <div class="field only-date">
+  <div class="field only-date" data-step="dates">
     <label>{{.T "f_dates"}}</label>
     <p class="hint">{{.T "f_dates_hint"}}</p>
     {{template "datepicker" (dpData . .Draft.DatesInit)}}
   </div>
-  <div class="only-date">{{template "durationfield" .}}</div>
-  <div class="field only-text">
+  <div class="only-date" data-step="duration">{{template "durationfield" .}}</div>
+  <div class="field only-text" data-step="choices">
     <label for="choices">{{.T "f_choices"}}</label>
     <textarea id="choices" name="choices" rows="5" placeholder="{{.T "f_choices_ph"}}">{{.Draft.Choices}}</textarea>
   </div>
 
-  <label class="check">
-    <input type="checkbox" name="allow_maybe" value="1"{{if .Draft.AllowMaybe}} checked{{end}}>
-    <span>{{.T "f_maybe"}}</span>
-  </label>
+  <details class="more" data-step="finish">
+    <summary>{{.T "more_settings"}}</summary>
+    <label class="check">
+      <input type="checkbox" name="allow_maybe" value="1"{{if .Draft.AllowMaybe}} checked{{end}}>
+      <span>{{.T "f_maybe"}}</span>
+    </label>
+  </details>
 
-  <button class="btn primary" type="submit">{{.T "create"}}</button>
+  <div data-step="finish"><button class="btn primary" type="submit">{{.T "create"}}</button></div>
 </form>
 
 <section id="mypolls" class="card mypolls" hidden>

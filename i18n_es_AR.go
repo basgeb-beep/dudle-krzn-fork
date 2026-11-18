@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Página no encontrada",
 		"not_found_p":         "Esta encuesta no existe (o ya no existe). Las encuestas se eliminan después de un período de inactividad.",
 		"back_home":           "Volver al inicio",
+		"dp_copy_all":         "Aplicar estas horas a todos los días",
+		"more_settings":       "Más ajustes",
 		"imprint":             "Aviso legal",
 		"privacy":             "Privacidad",
 		"err_not_yours":       "Solo podés cambiar tu propia entrada. Si hay que corregir algo, hablá con quien organiza la encuesta.",

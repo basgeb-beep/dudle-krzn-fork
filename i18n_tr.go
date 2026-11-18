@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Sayfa bulunamadı",
 		"not_found_p":         "Bu anket (artık) mevcut değil. Anketler bir süre etkinlik olmadığında kaldırılır.",
 		"back_home":           "Başa dön",
+		"dp_copy_all":         "Bu saatleri tüm günlere uygula",
+		"more_settings":       "Diğer ayarlar",
 		"imprint":             "Künye",
 		"privacy":             "Gizlilik",
 		"err_not_yours":       "Yalnızca kendi kaydınızı değiştirebilirsiniz. Bir düzeltme gerekiyorsa anketi düzenleyen kişiye başvurun.",

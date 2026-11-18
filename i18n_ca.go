@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Pàgina no trobada",
 		"not_found_p":         "Aquesta enquesta no existeix (o ja no existeix). Les enquestes s’eliminen després d’un període d’inactivitat.",
 		"back_home":           "Torna a l’inici",
+		"dp_copy_all":         "Aplica aquestes hores a tots els dies",
+		"more_settings":       "Més opcions",
 		"imprint":             "Avís legal",
 		"privacy":             "Privadesa",
 		"err_not_yours":       "Només pots canviar la teva pròpia entrada. Si cal corregir alguna cosa, adreça’t a qui organitza l’enquesta.",

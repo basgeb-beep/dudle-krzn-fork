@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Stránka nenalezena",
 		"not_found_p":         "Tato anketa neexistuje (nebo už neexistuje). Ankety se po určité době nečinnosti odstraňují.",
 		"back_home":           "Zpět na začátek",
+		"dp_copy_all":         "Použít tyto časy pro všechny dny",
+		"more_settings":       "Další nastavení",
 		"imprint":             "Tiráž",
 		"privacy":             "Ochrana osobních údajů",
 		"err_not_yours":       "Můžete změnit pouze svůj vlastní záznam. Pokud je třeba něco opravit, obraťte se na organizátora ankety.",

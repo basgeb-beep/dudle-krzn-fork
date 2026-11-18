@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Az oldal nem található",
 		"not_found_p":         "Ez a szavazás nem létezik (már). A szavazások egy inaktív időszak után törlődnek.",
 		"back_home":           "Vissza a kezdőlapra",
+		"dp_copy_all":         "Ezeket az időpontokat minden napra",
+		"more_settings":       "További beállítások",
 		"imprint":             "Impresszum",
 		"privacy":             "Adatvédelem",
 		"err_not_yours":       "Csak a saját bejegyzésedet módosíthatod. Ha valamit javítani kell, fordulj a szavazás szervezőjéhez.",

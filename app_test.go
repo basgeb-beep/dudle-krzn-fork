@@ -792,7 +792,8 @@ func TestParseDuration(t *testing.T) {
 		timeRange("09:00", 0) != "09:00" || timeRange("09:00", DurAllDay) != "09:00" {
 		t.Error("timeRange wrong")
 	}
-	if formatDuration(150) != "2:30 h" || formatDuration(15) != "0:15 h" {
+	if formatDuration(150, "de") != "2,5 h" || formatDuration(150, "en") != "2.5 h" || formatDuration(15, "de") != "15 min" ||
+		formatDuration(60, "de") != "1 h" || formatDuration(80, "de") != "1 h 20 min" {
 		t.Error("formatDuration wrong")
 	}
 }
@@ -813,13 +814,13 @@ func TestDurationFlow(t *testing.T) {
 	}
 	id := strings.Split(w.Header().Get("Location"), "/")[2]
 	body := c.do("GET", "/p/"+id+"?lang=de", nil).Body.String()
-	if !strings.Contains(body, "09:00–10:30") || !strings.Contains(body, "13:30–15:00") || !strings.Contains(body, "Dauer: 1:30 h") {
+	if !strings.Contains(body, "09:00–10:30") || !strings.Contains(body, "13:30–15:00") || !strings.Contains(body, "Dauer: 1,5 h") {
 		t.Fatalf("ranges or duration text missing")
 	}
 	// free entry
 	w = create(url.Values{"duration": {"custom"}, "duration_custom": {"25"}})
 	id2 := strings.Split(w.Header().Get("Location"), "/")[2]
-	if b := c.do("GET", "/p/"+id2, nil).Body.String(); !strings.Contains(b, "09:00–09:25") || !strings.Contains(b, "Duration: 0:25 h") {
+	if b := c.do("GET", "/p/"+id2, nil).Body.String(); !strings.Contains(b, "09:00–09:25") || !strings.Contains(b, "Duration: 25 min") {
 		t.Fatal("custom duration missing")
 	}
 	// all day: times are dropped
@@ -835,7 +836,7 @@ func TestDurationFlow(t *testing.T) {
 	}
 	// create form offers the choices
 	home := c.do("GET", "/", nil).Body.String()
-	for _, want := range []string{`value="15"`, `value="30"`, `value="45"`, `value="60"`, `value="90"`, `value="120"`, `value="150"`, `value="180"`, `value="1440"`, `value="custom"`, "0:15 h", "2:30 h"} {
+	for _, want := range []string{`value="15"`, `value="30"`, `value="45"`, `value="60"`, `value="90"`, `value="120"`, `value="150"`, `value="180"`, `value="1440"`, `value="custom"`, "15 min", "2.5 h"} {
 		if !strings.Contains(home, want) {
 			t.Errorf("home form lacks %s", want)
 		}

@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Paĝo ne trovita",
 		"not_found_p":         "Ĉi tiu enketo ne ekzistas (plu). Enketoj estas forigataj post periodo de neaktiveco.",
 		"back_home":           "Reen al la komenco",
+		"dp_copy_all":         "Apliki ĉi tiujn horojn al ĉiuj tagoj",
+		"more_settings":       "Pliaj agordoj",
 		"imprint":             "Jura informo",
 		"privacy":             "Privateco",
 		"err_not_yours":       "Vi povas ŝanĝi nur vian propran eniron. Se io devas esti korektita, kontaktu la organizanton de la enketo.",

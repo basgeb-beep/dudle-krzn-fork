@@ -36,7 +36,7 @@
 
 {{define "datepicker"}}
 <div class="datepicker" data-initial="{{.Init}}"
-     data-none="{{.T "dp_none"}}" data-time="{{.T "dp_time"}}" data-addtime="{{.T "dp_add_time"}}" data-count="{{.T "dp_count"}}" data-remove="{{.T "dp_remove"}}"
+     data-none="{{.T "dp_none"}}" data-time="{{.T "dp_time"}}" data-addtime="{{.T "dp_add_time"}}" data-count="{{.T "dp_count"}}" data-copyall="{{.T "dp_copy_all"}}" data-remove="{{.T "dp_remove"}}"
      data-prev="{{.T "cal_prev"}}" data-next="{{.T "cal_next"}}">
   <div class="cal" hidden></div>
   <ul class="picked"></ul>
@@ -47,16 +47,14 @@
 {{end}}
 
 {{define "durationfield"}}
-<div class="field dur">
-  <label for="duration">{{.T "dur_label"}}</label>
-  <div class="durrow">
-    <select id="duration" name="duration">
-      {{range .DurOpts}}<option value="{{.Val}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}
-    </select>
-    <span class="dur-custom">
-      <label for="duration_custom">{{.T "dur_custom_min"}}</label>
-      <input id="duration_custom" name="duration_custom" type="number" inputmode="numeric" min="1" max="1440" step="1" value="{{if .DurCustom}}{{.DurCustom}}{{end}}">
-    </span>
+<fieldset class="field dur">
+  <legend>{{.T "dur_label"}}</legend>
+  <div class="optchips">
+    {{range .DurOpts}}<input type="radio" id="dur-{{.Val}}" name="duration" value="{{.Val}}"{{if .Selected}} checked{{end}}><label for="dur-{{.Val}}">{{.Label}}</label>{{end}}
   </div>
-</div>
+  <p class="dur-custom">
+    <label for="duration_custom">{{.T "dur_custom_min"}}</label>
+    <input id="duration_custom" name="duration_custom" type="number" inputmode="numeric" min="1" max="1440" step="1" value="{{if .DurCustom}}{{.DurCustom}}{{end}}">
+  </p>
+</fieldset>
 {{end}}

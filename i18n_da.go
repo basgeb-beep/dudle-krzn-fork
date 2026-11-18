@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Siden blev ikke fundet",
 		"not_found_p":         "Denne afstemning findes ikke (længere). Afstemninger fjernes efter en periode uden aktivitet.",
 		"back_home":           "Tilbage til start",
+		"dp_copy_all":         "Brug disse tidspunkter på alle dage",
+		"more_settings":       "Flere indstillinger",
 		"imprint":             "Juridisk information",
 		"privacy":             "Privatliv",
 		"err_not_yours":       "Du kan kun ændre dit eget svar. Kontakt arrangøren, hvis noget skal rettes.",

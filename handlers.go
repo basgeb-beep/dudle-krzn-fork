@@ -80,7 +80,7 @@ func (v *View) durationText(min int) string {
 	case min >= DurAllDay:
 		return v.T("dur_allday")
 	}
-	return formatDuration(min)
+	return formatDuration(min, v.Lang)
 }
 
 // setDurationOptions fills the duration select for the current value.
@@ -88,7 +88,7 @@ func (v *View) setDurationOptions(cur int) {
 	v.DurOpts = []DurOpt{{Val: "0", Label: v.T("dur_none"), Selected: cur == 0}}
 	std := cur == 0 || cur == DurAllDay
 	for _, m := range durationChoices {
-		v.DurOpts = append(v.DurOpts, DurOpt{Val: strconv.Itoa(m), Label: formatDuration(m), Selected: cur == m})
+		v.DurOpts = append(v.DurOpts, DurOpt{Val: strconv.Itoa(m), Label: formatDuration(m, v.Lang), Selected: cur == m})
 		if cur == m {
 			std = true
 		}

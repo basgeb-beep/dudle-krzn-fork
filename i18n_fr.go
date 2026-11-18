@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Page introuvable",
 		"not_found_p":         "Ce sondage n’existe pas (ou plus). Les sondages sont supprimés après une période d’inactivité.",
 		"back_home":           "Retour à l’accueil",
+		"dp_copy_all":         "Appliquer ces heures à tous les jours",
+		"more_settings":       "Plus de paramètres",
 		"imprint":             "Mentions légales",
 		"privacy":             "Confidentialité",
 		"err_not_yours":       "Vous ne pouvez modifier que votre propre entrée. Adressez-vous à l’organisateur si une correction est nécessaire.",

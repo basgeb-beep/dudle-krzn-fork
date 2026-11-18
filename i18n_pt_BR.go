@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Página não encontrada",
 		"not_found_p":         "Esta enquete não existe (mais). As enquetes são removidas após um período de inatividade.",
 		"back_home":           "Voltar ao início",
+		"dp_copy_all":         "Aplicar estes horários a todos os dias",
+		"more_settings":       "Mais configurações",
 		"imprint":             "Aviso legal",
 		"privacy":             "Privacidade",
 		"err_not_yours":       "Você só pode alterar sua própria resposta. Fale com quem organiza a enquete se algo precisar ser corrigido.",
