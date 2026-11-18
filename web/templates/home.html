@@ -1,0 +1,53 @@
+{{define "content"}}
+<section class="hero">
+  <h1>{{.T "home_h1"}}</h1>
+  <p class="lead">{{.T "home_lead"}}</p>
+</section>
+
+{{if .Error}}<div class="alert error" role="alert">{{.Error}}</div>{{end}}
+
+<form class="card create" method="post" action="/create">
+  <div class="field">
+    <label for="title">{{.T "f_title"}}</label>
+    <input id="title" name="title" type="text" maxlength="120" required autofocus
+           placeholder="{{.T "f_title_ph"}}" value="{{.Draft.Title}}">
+  </div>
+  <div class="field">
+    <label for="description">{{.T "f_desc"}}</label>
+    <textarea id="description" name="description" rows="2" maxlength="2000"
+              placeholder="{{.T "f_desc_ph"}}">{{.Draft.Description}}</textarea>
+  </div>
+
+  <fieldset class="field kind">
+    <legend>{{.T "f_kind"}}</legend>
+    <div class="segmented">
+      <input type="radio" id="kind-date" name="kind" value="date"{{if eq .Draft.Kind "date"}} checked{{end}}>
+      <label for="kind-date">{{.T "kind_date"}}</label>
+      <input type="radio" id="kind-text" name="kind" value="text"{{if eq .Draft.Kind "text"}} checked{{end}}>
+      <label for="kind-text">{{.T "kind_text"}}</label>
+    </div>
+  </fieldset>
+
+  <div class="field only-date">
+    <label>{{.T "f_dates"}}</label>
+    <p class="hint">{{.T "f_dates_hint"}}</p>
+    {{template "datepicker" (dpData . .Draft.DatesInit)}}
+  </div>
+  <div class="field only-text">
+    <label for="choices">{{.T "f_choices"}}</label>
+    <textarea id="choices" name="choices" rows="5" placeholder="{{.T "f_choices_ph"}}">{{.Draft.Choices}}</textarea>
+  </div>
+
+  <label class="check">
+    <input type="checkbox" name="allow_maybe" value="1"{{if .Draft.AllowMaybe}} checked{{end}}>
+    <span>{{.T "f_maybe"}}</span>
+  </label>
+
+  <button class="btn primary" type="submit">{{.T "create"}}</button>
+</form>
+
+<section id="mypolls" class="card mypolls" hidden>
+  <h2>{{.T "my_polls"}}</h2>
+  <ul></ul>
+</section>
+{{end}}

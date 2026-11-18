@@ -1,0 +1,104 @@
+{{define "content"}}
+<main-admin data-admin-id="{{.Poll.ID}}" data-admin-title="{{.Poll.Title}}" data-admin-url="{{.AdminURL}}" hidden></main-admin>
+
+<section class="hero small">
+  <h1>{{.T "admin_title"}}</h1>
+  <p class="lead">{{.T "admin_intro"}}</p>
+</section>
+
+{{if .Error}}<div class="alert error" role="alert">{{.Error}}</div>{{end}}
+{{if .Notice}}<div class="alert ok" role="status">{{.Notice}}</div>{{end}}
+
+<section class="card">
+  <h2>{{.T "link_public"}}</h2>
+  <div class="copyrow">
+    <input id="pubUrl" type="text" readonly value="{{.PollURL}}" aria-label="{{.T "link_public"}}">
+    <button type="button" class="btn" data-copy="#pubUrl" data-copied="{{.T "copied"}}">{{.T "copy"}}</button>
+    <a class="btn primary" href="/p/{{.Poll.ID}}">{{.T "open_poll"}}</a>
+  </div>
+  <h2 class="spaced">{{.T "link_admin"}}</h2>
+  <div class="copyrow">
+    <input id="admUrl" type="text" readonly value="{{.AdminURL}}" aria-label="{{.T "link_admin"}}">
+    <button type="button" class="btn" data-copy="#admUrl" data-copied="{{.T "copied"}}">{{.T "copy"}}</button>
+  </div>
+</section>
+
+<form class="card" method="post" action="/p/{{.Poll.ID}}/admin/{{.Poll.AdminToken}}/settings">
+  <h2>{{.T "settings"}}</h2>
+  <div class="field">
+    <label for="title">{{.T "f_title"}}</label>
+    <input id="title" name="title" type="text" maxlength="120" required value="{{.Poll.Title}}">
+  </div>
+  <div class="field">
+    <label for="description">{{.T "f_desc"}}</label>
+    <textarea id="description" name="description" rows="3" maxlength="2000">{{.Poll.Description}}</textarea>
+  </div>
+  <label class="check"><input type="checkbox" name="allow_maybe" value="1"{{if .Poll.AllowMaybe}} checked{{end}}><span>{{.T "f_maybe"}}</span></label>
+  <label class="check"><input type="checkbox" name="closed" value="1"{{if .Poll.Closed}} checked{{end}}><span>{{.T "close_poll"}}</span></label>
+  <button class="btn primary" type="submit">{{.T "save"}}</button>
+</form>
+
+<section class="card">
+  <h2>{{.T "options"}}</h2>
+  <ul class="manage">
+    {{range .Opts}}
+    <li>
+      <span>{{.Full}}</span>
+      <form method="post" action="/p/{{$.Poll.ID}}/admin/{{$.Poll.AdminToken}}/delete_option" data-confirm="{{$.T "confirm_delete"}}">
+        <input type="hidden" name="option" value="{{.ID}}">
+        <button class="btn small danger-ghost" type="submit">{{$.T "delete"}}</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+  <form method="post" action="/p/{{.Poll.ID}}/admin/{{.Poll.AdminToken}}/add_options" class="addopts">
+    <h3>{{.T "add_options"}}</h3>
+    {{if eq .Poll.Kind "date"}}
+      {{template "datepicker" (dpData . "")}}
+    {{else}}
+      <textarea name="choices" rows="3" placeholder="{{.T "f_choices_ph"}}" aria-label="{{.T "f_choices"}}"></textarea>
+    {{end}}
+    <button class="btn" type="submit">{{.T "add_options"}}</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>{{.T "participants"}} <span class="count">{{.NumVoters}}</span></h2>
+  <ul class="manage">
+    {{range .Rows}}
+    <li>
+      <span>{{.Name}}</span>
+      <form method="post" action="/p/{{$.Poll.ID}}/admin/{{$.Poll.AdminToken}}/delete_participant" data-confirm="{{$.T "confirm_delete"}}">
+        <input type="hidden" name="participant" value="{{.ID}}">
+        <button class="btn small danger-ghost" type="submit">{{$.T "delete"}}</button>
+      </form>
+    </li>
+    {{else}}<li class="empty">{{.T "no_votes"}}</li>{{end}}
+  </ul>
+</section>
+
+{{if .Comments}}
+<section class="card">
+  <h2>{{.T "comments"}}</h2>
+  <ul class="manage">
+    {{range .Comments}}
+    <li>
+      <span><strong>{{.Name}}</strong>: {{.Text}}</span>
+      <form method="post" action="/p/{{$.Poll.ID}}/admin/{{$.Poll.AdminToken}}/delete_comment" data-confirm="{{$.T "confirm_delete"}}">
+        <input type="hidden" name="comment" value="{{.ID}}">
+        <button class="btn small danger-ghost" type="submit">{{$.T "delete"}}</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+</section>
+{{end}}
+
+<section class="card danger">
+  <h2>{{.T "danger"}}</h2>
+  <p>{{.T "delete_poll_p"}}</p>
+  <form method="post" action="/p/{{.Poll.ID}}/admin/{{.Poll.AdminToken}}/delete_poll" data-confirm="{{.T "confirm_delete"}}">
+    <button class="btn danger" type="submit">{{.T "delete_poll"}}</button>
+  </form>
+</section>
+{{end}}
