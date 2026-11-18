@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "Koma motɔ́ya …",
 		"post":                "Tinda",
 		"no_comments":         "Motɔ́ya moko te naino.",
-		"export_csv":          "Bimisa na CSV",
-		"feed":                "Atom feed",
 		"v_yes":               "Iyo",
 		"v_maybe":             "Soki esɛngi",
 		"v_no":                "Te",

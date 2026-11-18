@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "اكتب تعليقًا …",
 		"post":                "نشر",
 		"no_comments":         "لا توجد تعليقات بعد.",
-		"export_csv":          "تصدير CSV",
-		"feed":                "تغذية Atom",
 		"v_yes":               "نعم",
 		"v_maybe":             "إذا لزم الأمر",
 		"v_no":                "لا",

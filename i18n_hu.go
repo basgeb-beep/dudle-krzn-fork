@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "Írj egy hozzászólást …",
 		"post":                "Küldés",
 		"no_comments":         "Még nincs hozzászólás.",
-		"export_csv":          "CSV exportálása",
-		"feed":                "Atom-hírcsatorna",
 		"v_yes":               "Igen",
 		"v_maybe":             "Ha muszáj",
 		"v_no":                "Nem",

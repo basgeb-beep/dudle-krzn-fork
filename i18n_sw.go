@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "Andika maoni …",
 		"post":                "Tuma",
 		"no_comments":         "Hakuna maoni bado.",
-		"export_csv":          "Hamisha CSV",
-		"feed":                "Mlisho wa Atom",
 		"v_yes":               "Ndiyo",
 		"v_maybe":             "Ikibidi",
 		"v_no":                "Hapana",

@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "Kirjoita kommentti …",
 		"post":                "Lähetä",
 		"no_comments":         "Ei vielä kommentteja.",
-		"export_csv":          "Vie CSV-tiedostona",
-		"feed":                "Atom-syöte",
 		"v_yes":               "Kyllä",
 		"v_maybe":             "Tarvittaessa",
 		"v_no":                "Ei",

@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "Napište komentář …",
 		"post":                "Odeslat",
 		"no_comments":         "Zatím žádné komentáře.",
-		"export_csv":          "Exportovat CSV",
-		"feed":                "Kanál Atom",
 		"v_yes":               "Ano",
 		"v_maybe":             "V nouzi",
 		"v_no":                "Ne",

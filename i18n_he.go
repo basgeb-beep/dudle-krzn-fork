@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "כתבו תגובה …",
 		"post":                "פרסום",
 		"no_comments":         "עדיין אין תגובות.",
-		"export_csv":          "ייצוא ל-CSV",
-		"feed":                "הזנת Atom",
 		"v_yes":               "כן",
 		"v_maybe":             "אם חייבים",
 		"v_no":                "לא",

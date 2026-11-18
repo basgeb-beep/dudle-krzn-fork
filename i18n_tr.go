@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "Bir yorum yazın …",
 		"post":                "Gönder",
 		"no_comments":         "Henüz yorum yok.",
-		"export_csv":          "CSV olarak dışa aktar",
-		"feed":                "Atom beslemesi",
 		"v_yes":               "Evet",
 		"v_maybe":             "Gerekirse",
 		"v_no":                "Hayır",

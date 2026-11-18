@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "Skribu komenton …",
 		"post":                "Afiŝi",
 		"no_comments":         "Ankoraŭ neniu komento.",
-		"export_csv":          "Eksporti CSV",
-		"feed":                "Atom-fluo",
 		"v_yes":               "Jes",
 		"v_maybe":             "Se necesas",
 		"v_no":                "Ne",

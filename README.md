@@ -8,7 +8,7 @@ Single static Go binary, SQLite storage, no external services, no tracking.
 - Yes / "if need be" / no answers, best option highlighted automatically
 - No accounts: participants get a link, the creator gets a private admin link
 - Admin page: edit settings, add/remove options, remove participants/comments, close or delete the poll
-- Comments, CSV export, Atom feed
+- Comments
 - Light/dark mode, responsive, works without JavaScript (progressive enhancement)
 - English and German (add a language in `i18n.go`)
 - Inactive polls are deleted automatically (default: 365 days)

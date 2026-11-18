@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "Escribí un comentario …",
 		"post":                "Publicar",
 		"no_comments":         "Todavía no hay comentarios.",
-		"export_csv":          "Exportar CSV",
-		"feed":                "Canal Atom",
 		"v_yes":               "Sí",
 		"v_maybe":             "Si hace falta",
 		"v_no":                "No",

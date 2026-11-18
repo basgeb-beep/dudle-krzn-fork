@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "Skriv en kommentar …",
 		"post":                "Skicka",
 		"no_comments":         "Inga kommentarer än.",
-		"export_csv":          "Exportera CSV",
-		"feed":                "Atom-flöde",
 		"v_yes":               "Ja",
 		"v_maybe":             "Om det behövs",
 		"v_no":                "Nej",

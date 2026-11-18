@@ -112,10 +112,6 @@
     <input id="pollurl" type="text" readonly value="{{.PollURL}}" aria-label="{{.T "share"}}">
     <button type="button" class="btn" data-copy="#pollurl" data-copied="{{.T "copied"}}">{{.T "copy"}}</button>
   </div>
-  {{if not .Hidden}}<p class="links">
-    <a href="/p/{{.Poll.ID}}/export.csv">{{.T "export_csv"}}</a>
-    <a href="/p/{{.Poll.ID}}/feed.atom">{{.T "feed"}}</a>
-  </p>{{end}}
 </section>
 
 <section class="card comments" id="comments">

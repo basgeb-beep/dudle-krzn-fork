@@ -43,8 +43,6 @@ func init() {
 		"comment_ph":          "Kirjuta kommentaar …",
 		"post":                "Saada",
 		"no_comments":         "Kommentaare pole veel.",
-		"export_csv":          "Ekspordi CSV",
-		"feed":                "Atomi voog",
 		"v_yes":               "Jah",
 		"v_maybe":             "Vajaduse korral",
 		"v_no":                "Ei",
