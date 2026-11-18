@@ -23,6 +23,17 @@
 </section>
 {{end}}
 
+ {{if .DeleteID}}
+<section class="card danger" role="alertdialog" aria-label="{{.T "del_title"}}">
+  <p>{{.T "del_q" .DeleteName}}</p>
+  <form method="post" action="/p/{{.Poll.ID}}/delete_participant" class="inline">
+    <input type="hidden" name="participant" value="{{.DeleteID}}">
+    <button class="btn danger" type="submit">{{.T "delete"}}</button>
+    <a class="btn ghost" href="/p/{{.Poll.ID}}#participants">{{.T "cancel"}}</a>
+  </form>
+</section>
+{{end}}
+
 <form id="vote" method="post" action="/p/{{.Poll.ID}}/vote" class="card votes-card">
   <div class="tablewrap" id="participants">
     <table class="votes">
@@ -52,7 +63,8 @@
         <tr>
           <th class="name" scope="row">
             <span class="who">{{.Name}}</span>
-            {{if not $.Poll.Closed}}<a class="icon-btn" href="/p/{{$.Poll.ID}}?edit={{.ID}}#vote" title="{{$.T "edit"}}" aria-label="{{$.T "edit"}}: {{.Name}}">✎</a>{{end}}
+            {{if not $.Poll.Closed}}<a class="icon-btn" href="/p/{{$.Poll.ID}}?edit={{.ID}}#vote" title="{{$.T "edit"}}" aria-label="{{$.T "edit"}}: {{.Name}}">✎</a>
+            <a class="icon-btn" href="/p/{{$.Poll.ID}}?delete={{.ID}}#participants" title="{{$.T "delete"}}" aria-label="{{$.T "delete"}}: {{.Name}}">✕</a>{{end}}
           </th>
           {{range .Cells}}<td class="cell c{{.Value}}"><span class="vs" title="{{$.VoteLabel .Value}}"><span aria-hidden="true">{{$.Symbol .Value}}</span><span class="sr">{{$.VoteLabel .Value}}</span></span></td>{{end}}
         </tr>

@@ -43,6 +43,11 @@ Run it behind a TLS-terminating reverse proxy (it honours `X-Forwarded-Proto`).
 - `i18n.go` – translations
 - `web/` – embedded templates, CSS and JS
 
+## Access control and participants
+- Optional **participant password** (visitors must unlock the poll to see, vote and export) and optional **admin password** (required in addition to the secret admin link). Set both on the admin page.
+- Passwords are stored as salted PBKDF2-SHA256 hashes; unlocking sets a signed cookie that becomes invalid when the password changes. Password attempts are limited to 10 per minute per client and poll.
+- The admin can **invite participants** by name; anyone can edit or delete (with confirmation) a participant on the poll page while the poll is open.
+
 ## Known limitations
 - Rate limiting is per client IP and in memory (resets on restart); it only covers write requests.
 - Anyone with a poll link can edit any participant's answers (same as classic dudle/Doodle).

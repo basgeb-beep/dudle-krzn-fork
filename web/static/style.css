@@ -273,3 +273,6 @@ ul.manage li.empty { color: var(--muted); justify-content: center; }
   body { background: #fff; color: #000; }
   .top .btn, .share, .comment-form, .actions, footer nav, .icon-btn { display: none !important; }
 }
+
+form.inline { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pwform { margin-bottom: 14px; }

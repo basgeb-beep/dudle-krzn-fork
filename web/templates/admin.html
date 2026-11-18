@@ -77,6 +77,21 @@
   </ul>
 </section>
 
+<section class="card">
+  <h3>{{.T "invite_title"}}</h3>
+  <p class="hint">{{.T "invite_hint"}}</p>
+  <form method="post" action="/p/{{.Poll.ID}}/admin/{{.Poll.AdminToken}}/invite" class="addopts">
+    <textarea name="names" rows="3" aria-label="{{.T "invite_title"}}"></textarea>
+    <button class="btn" type="submit">{{.T "invite_btn"}}</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>{{.T "pw_section"}}</h2>
+  {{template "pwform" (pw . "participant" .Poll.PwParticipant)}}
+  {{template "pwform" (pw . "admin" .Poll.PwAdmin)}}
+</section>
+
 {{if .Comments}}
 <section class="card">
   <h2>{{.T "comments"}}</h2>
@@ -101,4 +116,26 @@
     <button class="btn danger" type="submit">{{.T "delete_poll"}}</button>
   </form>
 </section>
+{{end}}
+
+{{define "pwform"}}
+<form method="post" action="/p/{{.V.Poll.ID}}/admin/{{.V.Poll.AdminToken}}/set_password" class="pwform">
+  <input type="hidden" name="role" value="{{.Role}}">
+  <h3>{{if eq .Role "admin"}}{{.V.T "pw_admin"}}{{else}}{{.V.T "pw_participant"}}{{end}}
+    <span class="count">{{if .Active}}{{.V.T "pw_active"}}{{else}}{{.V.T "pw_inactive"}}{{end}}</span></h3>
+  <p class="hint">{{if eq .Role "admin"}}{{.V.T "pw_admin_hint"}}{{else}}{{.V.T "pw_participant_hint"}}{{end}}</p>
+  <div class="field">
+    <label>{{.V.T "pw_new"}}<input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="200" required></label>
+  </div>
+  <div class="field">
+    <label>{{.V.T "pw_repeat"}}<input type="password" name="password2" autocomplete="new-password" minlength="8" maxlength="200" required></label>
+  </div>
+  <button class="btn" type="submit">{{if .Active}}{{.V.T "pw_change"}}{{else}}{{.V.T "pw_set"}}{{end}}</button>
+</form>
+{{if .Active}}
+<form method="post" action="/p/{{.V.Poll.ID}}/admin/{{.V.Poll.AdminToken}}/remove_password" data-confirm="{{.V.T "confirm_delete"}}">
+  <input type="hidden" name="role" value="{{.Role}}">
+  <button class="btn small danger-ghost" type="submit">{{.V.T "pw_remove"}}</button>
+</form>
+{{end}}
 {{end}}
