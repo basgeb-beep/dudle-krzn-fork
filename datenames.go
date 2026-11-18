@@ -1,0 +1,63 @@
+package main
+
+// Weekday (Sunday first) and month abbreviations per language.
+var (
+	weekdays = map[string][]string{
+		"en":    {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"},
+		"de":    {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"},
+		"ar":    {"الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"},
+		"bg":    {"нд", "пн", "вт", "ср", "чт", "пт", "сб"},
+		"ca":    {"dg.", "dl.", "dt.", "dc.", "dj.", "dv.", "ds."},
+		"cs":    {"ne", "po", "út", "st", "čt", "pá", "so"},
+		"da":    {"søn", "man", "tirs", "ons", "tors", "fre", "lør"},
+		"eo":    {"dim", "lun", "mar", "mer", "ĵaŭ", "ven", "sab"},
+		"es":    {"dom", "lun", "mar", "mié", "jue", "vie", "sáb"},
+		"es_AR": {"dom", "lun", "mar", "mié", "jue", "vie", "sáb"},
+		"et":    {"P", "E", "T", "K", "N", "R", "L"},
+		"fi":    {"su", "ma", "ti", "ke", "to", "pe", "la"},
+		"fr":    {"dim", "lun", "mar", "mer", "jeu", "ven", "sam"},
+		"gl":    {"dom", "lun", "mar", "mér", "xov", "ven", "sáb"},
+		"he":    {"א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"},
+		"hu":    {"V", "H", "K", "Sze", "Cs", "P", "Szo"},
+		"it":    {"dom", "lun", "mar", "mer", "gio", "ven", "sab"},
+		"ln":    {"eye", "ybo", "mbl", "mst", "min", "mtn", "mps"},
+		"nl":    {"zo", "ma", "di", "wo", "do", "vr", "za"},
+		"no":    {"søn", "man", "tir", "ons", "tor", "fre", "lør"},
+		"pl":    {"niedz.", "pon.", "wt.", "śr.", "czw.", "pt.", "sob."},
+		"pt_BR": {"dom", "seg", "ter", "qua", "qui", "sex", "sáb"},
+		"ru":    {"вс", "пн", "вт", "ср", "чт", "пт", "сб"},
+		"sv":    {"sön", "mån", "tis", "ons", "tors", "fre", "lör"},
+		"sw":    {"Jpi", "Jtt", "Jnn", "Jtn", "Alh", "Ijm", "Jms"},
+		"tr":    {"Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"},
+	}
+	months = map[string][]string{
+		"en":    {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"},
+		"de":    {"Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"},
+		"ar":    {"يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"},
+		"bg":    {"яну", "фев", "мар", "апр", "май", "юни", "юли", "авг", "сеп", "окт", "ное", "дек"},
+		"ca":    {"gen.", "febr.", "març", "abr.", "maig", "juny", "jul.", "ag.", "set.", "oct.", "nov.", "des."},
+		"cs":    {"led", "úno", "bře", "dub", "kvě", "čvn", "čvc", "srp", "zář", "říj", "lis", "pro"},
+		"da":    {"jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"},
+		"eo":    {"jan", "feb", "mar", "apr", "maj", "jun", "jul", "aŭg", "sep", "okt", "nov", "dec"},
+		"es":    {"ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"},
+		"es_AR": {"ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"},
+		"et":    {"jaan", "veebr", "märts", "apr", "mai", "juuni", "juuli", "aug", "sept", "okt", "nov", "dets"},
+		"fi":    {"tammi", "helmi", "maalis", "huhti", "touko", "kesä", "heinä", "elo", "syys", "loka", "marras", "joulu"},
+		"fr":    {"janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."},
+		"gl":    {"xan", "feb", "mar", "abr", "mai", "xuñ", "xul", "ago", "set", "out", "nov", "dec"},
+		"he":    {"ינו׳", "פבר׳", "מרץ", "אפר׳", "מאי", "יוני", "יולי", "אוג׳", "ספט׳", "אוק׳", "נוב׳", "דצמ׳"},
+		"hu":    {"jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec."},
+		"it":    {"gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"},
+		"ln":    {"yan", "fbl", "msi", "apl", "mai", "yun", "yul", "agt", "stb", "ɔtb", "nvb", "dsb"},
+		"nl":    {"jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"},
+		"no":    {"jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des"},
+		"pl":    {"sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"},
+		"pt_BR": {"jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"},
+		"ru":    {"янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"},
+		"sv":    {"jan", "feb", "mar", "apr", "maj", "jun", "jul", "aug", "sep", "okt", "nov", "dec"},
+		"sw":    {"Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ago", "Sep", "Okt", "Nov", "Des"},
+		"tr":    {"Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"},
+	}
+	// Languages that write a day number with a trailing dot ("1. Dez 2026").
+	dotDay = map[string]bool{"de": true, "cs": true, "da": true, "fi": true, "no": true, "et": true}
+)

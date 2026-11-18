@@ -126,7 +126,11 @@ func TestMessagesComplete(t *testing.T) {
 func TestDetectLang(t *testing.T) {
 	cases := []struct{ accept, query, want string }{
 		{"de-DE,de;q=0.9,en;q=0.8", "", "de"},
-		{"fr-FR,fr;q=0.9", "", "en"},
+		{"fr-FR,fr;q=0.9", "", "fr"},
+		{"pt-BR,pt;q=0.9", "", "pt_BR"},
+		{"es-AR", "", "es_AR"},
+		{"nb-NO", "", "no"},
+		{"zh-CN,ja", "", "en"},
 		{"", "", "en"},
 		{"en-US", "?lang=de", "de"},
 		{"de", "?lang=xx", "de"},
@@ -695,5 +699,16 @@ func TestBasePath(t *testing.T) {
 	w = c.do("POST", "/dudle/p/"+id+"/unlock", url.Values{"password": {"secret-pw-1"}})
 	if cs := w.Result().Cookies(); w.Code != 303 || len(cs) == 0 || cs[0].Path != "/dudle/p/"+id {
 		t.Fatalf("cookie path: %d %v", w.Code, w.Result().Cookies())
+	}
+}
+
+func TestDateNamesComplete(t *testing.T) {
+	for _, l := range supportedLangs {
+		if len(weekdays[l]) != 7 || len(months[l]) != 12 {
+			t.Errorf("lang %s: incomplete weekday/month names", l)
+		}
+		if langNames[l] == "" {
+			t.Errorf("lang %s: no display name", l)
+		}
 	}
 }

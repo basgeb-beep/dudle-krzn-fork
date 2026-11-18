@@ -154,17 +154,6 @@ type MonthGroup struct {
 	Span int
 }
 
-var (
-	weekdays = map[string][]string{
-		"en": {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"},
-		"de": {"So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"},
-	}
-	months = map[string][]string{
-		"en": {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"},
-		"de": {"Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"},
-	}
-)
-
 func langTable(m map[string][]string, lang string) []string {
 	if t, ok := m[lang]; ok {
 		return t
@@ -189,10 +178,13 @@ func viewOption(kind string, o Option, lang string) OptionView {
 	mon := langTable(months, lang)[t.Month()-1]
 	ov.Month = fmt.Sprintf("%s %d", mon, t.Year())
 	ov.Time = timePart
-	if lang == "de" {
-		ov.Full = fmt.Sprintf("%s, %d. %s %d", ov.Weekday, t.Day(), mon, t.Year())
-	} else {
+	switch {
+	case lang == "en":
 		ov.Full = fmt.Sprintf("%s, %s %d, %d", ov.Weekday, mon, t.Day(), t.Year())
+	case dotDay[lang]:
+		ov.Full = fmt.Sprintf("%s, %d. %s %d", ov.Weekday, t.Day(), mon, t.Year())
+	default:
+		ov.Full = fmt.Sprintf("%s, %d %s %d", ov.Weekday, t.Day(), mon, t.Year())
 	}
 	if timePart != "" {
 		ov.Full += ", " + timePart
