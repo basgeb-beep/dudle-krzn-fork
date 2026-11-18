@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
@@ -40,6 +42,10 @@ type Poll struct {
 	AllowMaybe  bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+
+	// Password hashes (see auth.go); empty means no password is set.
+	PwParticipant string
+	PwAdmin       string
 }
 
 type Option struct {
@@ -79,7 +85,13 @@ CREATE TABLE IF NOT EXISTS polls (
 	closed      INTEGER NOT NULL DEFAULT 0,
 	allow_maybe INTEGER NOT NULL DEFAULT 1,
 	created_at  INTEGER NOT NULL,
-	updated_at  INTEGER NOT NULL
+	updated_at  INTEGER NOT NULL,
+	pw_participant TEXT NOT NULL DEFAULT '',
+	pw_admin       TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS meta (
+	key   TEXT PRIMARY KEY,
+	value TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS options (
 	id      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -127,7 +139,73 @@ func OpenStore(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
+	// Databases created before access control existed lack the password columns.
+	for _, col := range []string{"pw_participant", "pw_admin"} {
+		var n int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('polls') WHERE name=?`, col).Scan(&n); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("migrate: %w", err)
+		}
+		if n == 0 {
+			if _, err := db.Exec(`ALTER TABLE polls ADD COLUMN ` + col + ` TEXT NOT NULL DEFAULT ''`); err != nil {
+				db.Close()
+				return nil, fmt.Errorf("migrate: %w", err)
+			}
+		}
+	}
 	return &Store{db: db}, nil
+}
+
+// Secret returns the server-side secret used to sign unlock cookies,
+// creating it on first use so that it survives restarts.
+func (s *Store) Secret() ([]byte, error) {
+	var v string
+	err := s.db.QueryRow(`SELECT value FROM meta WHERE key='secret'`).Scan(&v)
+	if err == nil {
+		return hex.DecodeString(v)
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return nil, err
+	}
+	if _, err := s.db.Exec(`INSERT OR IGNORE INTO meta (key,value) VALUES ('secret',?)`, hex.EncodeToString(b)); err != nil {
+		return nil, err
+	}
+	if err := s.db.QueryRow(`SELECT value FROM meta WHERE key='secret'`).Scan(&v); err != nil {
+		return nil, err
+	}
+	return hex.DecodeString(v)
+}
+
+// SetPassword stores a password hash for role "participant" or "admin"
+// (empty hash removes the password).
+func (s *Store) SetPassword(pollID, role, hash string) error {
+	col := "pw_participant"
+	if role == "admin" {
+		col = "pw_admin"
+	}
+	_, err := s.db.Exec(`UPDATE polls SET `+col+`=? WHERE id=?`, hash, pollID)
+	return err
+}
+
+// InviteParticipants adds participants without answers. Names that already
+// exist are skipped. It returns how many were added.
+func (s *Store) InviteParticipants(pollID string, names []string) (int, error) {
+	n := 0
+	for _, name := range names {
+		_, err := s.SaveVote(pollID, 0, name, map[int64]int{})
+		switch {
+		case err == nil:
+			n++
+		case errors.Is(err, ErrNameTaken):
+		default:
+			return n, err
+		}
+	}
+	return n, nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }
@@ -165,9 +243,9 @@ func (s *Store) GetPoll(id string) (*Poll, error) {
 	var p Poll
 	var closed, maybe int
 	var created, updated int64
-	err := s.db.QueryRow(`SELECT id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at
+	err := s.db.QueryRow(`SELECT id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,pw_participant,pw_admin
 		FROM polls WHERE id=?`, id).
-		Scan(&p.ID, &p.Title, &p.Description, &p.Kind, &p.AdminToken, &closed, &maybe, &created, &updated)
+		Scan(&p.ID, &p.Title, &p.Description, &p.Kind, &p.AdminToken, &closed, &maybe, &created, &updated, &p.PwParticipant, &p.PwAdmin)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}

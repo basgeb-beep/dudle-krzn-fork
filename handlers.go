@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/subtle"
 	"embed"
 	"encoding/csv"
 	"encoding/xml"
@@ -29,8 +28,10 @@ type Server struct {
 	pages   map[string]*template.Template
 	baseURL string // optional fixed public base URL
 
-	limiter    *limiter // nil = no rate limiting
-	trustProxy bool     // use X-Forwarded-For to identify clients
+	secret        []byte   // signs unlock cookies
+	unlockLimiter *limiter // brute-force protection for password forms
+	limiter       *limiter // nil = no rate limiting
+	trustProxy    bool     // use X-Forwarded-For to identify clients
 }
 
 // SetRateLimit enables per-client limiting of write requests (per minute, 0 = off).
@@ -59,14 +60,27 @@ type DPData struct {
 
 func (d DPData) T(key string, args ...any) string { return d.V.T(key, args...) }
 
+// PwForm is the data for one password form on the admin page.
+type PwForm struct {
+	V      *View
+	Role   string
+	Active bool
+}
+
 var templateFuncs = template.FuncMap{
+	"pw":     func(v *View, role, hash string) PwForm { return PwForm{V: v, Role: role, Active: hash != ""} },
 	"dict":   func(v *View, c Cell, label string) VoteSel { return VoteSel{V: v, Cell: c, Label: label} },
 	"dpData": func(v *View, init string) DPData { return DPData{V: v, Init: init, Rows: []int{0, 1, 2, 3}} },
 }
 
 func NewServer(store *Store, baseURL string) (*Server, error) {
-	s := &Server{store: store, baseURL: strings.TrimRight(baseURL, "/"), pages: map[string]*template.Template{}}
-	for _, name := range []string{"home", "poll", "admin", "error"} {
+	secret, err := store.Secret()
+	if err != nil {
+		return nil, fmt.Errorf("secret: %w", err)
+	}
+	s := &Server{store: store, baseURL: strings.TrimRight(baseURL, "/"), pages: map[string]*template.Template{},
+		secret: secret, unlockLimiter: newLimiter(10)}
+	for _, name := range []string{"home", "poll", "admin", "error", "unlock"} {
 		t, err := template.New("").Funcs(templateFuncs).ParseFS(webFS, "web/templates/layout.html", "web/templates/"+name+".html")
 		if err != nil {
 			return nil, fmt.Errorf("template %s: %w", name, err)
@@ -129,6 +143,11 @@ type View struct {
 	Draft     Draft
 	Langs     []string
 	NumVoters int
+
+	UnlockRole   string
+	UnlockAction string
+	DeleteID     int64
+	DeleteName   string
 }
 
 func (v *View) T(key string, args ...any) string { return tr(v.Lang, key, args...) }
@@ -232,7 +251,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /{$}", s.home)
 	mux.HandleFunc("POST /create", s.create)
 	mux.HandleFunc("GET /p/{id}", s.poll)
+	mux.HandleFunc("POST /p/{id}/unlock", s.unlock(roleParticip))
+	mux.HandleFunc("POST /p/{id}/admin/{token}/unlock", s.unlock(roleAdmin))
 	mux.HandleFunc("POST /p/{id}/vote", s.vote)
+	mux.HandleFunc("POST /p/{id}/delete_participant", s.deleteParticipant)
 	mux.HandleFunc("POST /p/{id}/comment", s.comment)
 	mux.HandleFunc("GET /p/{id}/feed.atom", s.feed)
 	mux.HandleFunc("GET /p/{id}/export.csv", s.export)
@@ -357,7 +379,20 @@ func (s *Server) parseOptions(kind string, r *http.Request, _ *View) ([]string, 
 
 // ---------------------------------------------------------------- poll page
 
+// loadPoll loads the poll and enforces the participant password.
 func (s *Server) loadPoll(w http.ResponseWriter, r *http.Request) *PollData {
+	d := s.loadPollRaw(w, r)
+	if d == nil {
+		return nil
+	}
+	if !s.unlocked(r, &d.Poll, roleParticip) {
+		s.renderUnlock(w, r, &d.Poll, roleParticip, "")
+		return nil
+	}
+	return d
+}
+
+func (s *Server) loadPollRaw(w http.ResponseWriter, r *http.Request) *PollData {
 	d, err := s.store.Load(r.PathValue("id"))
 	if errors.Is(err, ErrNotFound) {
 		s.notFound(w, r)
@@ -409,7 +444,36 @@ func (s *Server) poll(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	if id, _ := strconv.ParseInt(r.URL.Query().Get("delete"), 10, 64); id > 0 && !d.Poll.Closed {
+		for _, row := range v.Rows {
+			if row.ID == id {
+				v.DeleteID, v.DeleteName = id, row.Name
+			}
+		}
+	}
 	s.render(w, "poll", v)
+}
+
+// deleteParticipant removes a participant after confirmation on the poll page.
+func (s *Server) deleteParticipant(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, r, http.StatusBadRequest, "err_generic", "err_generic")
+		return
+	}
+	d := s.loadPoll(w, r)
+	if d == nil {
+		return
+	}
+	if d.Poll.Closed {
+		s.fail(w, r, http.StatusForbidden, "err_generic", "err_closed")
+		return
+	}
+	id, _ := strconv.ParseInt(r.FormValue("participant"), 10, 64)
+	if err := s.store.DeleteParticipant(d.Poll.ID, id); err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	http.Redirect(w, r, "/p/"+d.Poll.ID+"#participants", http.StatusSeeOther)
 }
 
 func (s *Server) vote(w http.ResponseWriter, r *http.Request) {
@@ -597,12 +661,16 @@ func (s *Server) export(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------- admin
 
 func (s *Server) loadAdmin(w http.ResponseWriter, r *http.Request) *PollData {
-	d := s.loadPoll(w, r)
+	d := s.loadPollRaw(w, r)
 	if d == nil {
 		return nil
 	}
-	if subtle.ConstantTimeCompare([]byte(r.PathValue("token")), []byte(d.Poll.AdminToken)) != 1 {
+	if !tokenOK(r.PathValue("token"), d.Poll.AdminToken) {
 		s.notFound(w, r)
+		return nil
+	}
+	if !s.unlocked(r, &d.Poll, roleAdmin) {
+		s.renderUnlock(w, r, &d.Poll, roleAdmin, "")
 		return nil
 	}
 	return d
@@ -669,6 +737,55 @@ func (s *Server) adminAction(w http.ResponseWriter, r *http.Request) {
 		}
 	case "delete_participant":
 		err = s.store.DeleteParticipant(id, num("participant"))
+	case "invite":
+		var names []string
+		seen := map[string]bool{}
+		for _, line := range strings.Split(r.FormValue("names"), "\n") {
+			n := cleanLine(line)
+			if n == "" || seen[strings.ToLower(n)] {
+				continue
+			}
+			if tooLong(n, maxName) {
+				msg = "err_name"
+				break
+			}
+			seen[strings.ToLower(n)] = true
+			names = append(names, n)
+		}
+		if msg == "" && len(names) > 50 {
+			msg = "err_too_many"
+		}
+		if msg == "" && len(names) > 0 {
+			_, err = s.store.InviteParticipants(id, names)
+			if errors.Is(err, ErrClosed) {
+				err, msg = nil, "err_closed"
+			}
+		}
+	case "set_password", "remove_password":
+		role := r.FormValue("role")
+		if role != roleParticip && role != roleAdmin {
+			s.notFound(w, r)
+			return
+		}
+		hash := ""
+		if r.PathValue("action") == "set_password" {
+			pw := r.FormValue("password")
+			switch {
+			case len(pw) < pwMinLen || len(pw) > pwMaxLen:
+				msg = "err_pw_short"
+			case pw != r.FormValue("password2"):
+				msg = "err_pw_mismatch"
+			default:
+				hash, err = hashPassword(pw)
+			}
+		}
+		if err == nil && msg == "" {
+			if err = s.store.SetPassword(id, role, hash); err == nil {
+				// Keep the current browser unlocked after a change.
+				d.Poll.PwParticipant, d.Poll.PwAdmin = pollHash2(d.Poll, role, hash)
+				s.setUnlock(w, r, &d.Poll, role)
+			}
+		}
 	case "delete_comment":
 		err = s.store.DeleteComment(id, num("comment"))
 	case "delete_poll":
@@ -697,4 +814,15 @@ func (s *Server) adminAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, back, http.StatusSeeOther)
+}
+
+// pollHash2 returns the poll's two hashes with the given role's hash replaced.
+func pollHash2(p Poll, role, hash string) (participant, admin string) {
+	participant, admin = p.PwParticipant, p.PwAdmin
+	if role == roleAdmin {
+		admin = hash
+	} else {
+		participant = hash
+	}
+	return
 }

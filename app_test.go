@@ -533,3 +533,118 @@ func TestLimiterRefill(t *testing.T) {
 		t.Fatal("expected refill after 2s")
 	}
 }
+
+func TestAccessControlInviteDelete(t *testing.T) {
+	c := newClient(t)
+	loc := c.do("POST", "/create", url.Values{"title": {"T"}, "kind": {"text"}, "choices": {"A\nB"}}).Header().Get("Location")
+	parts := strings.Split(loc, "/")
+	id, token := parts[2], parts[4]
+	admin := "/p/" + id + "/admin/" + token
+
+	// Invite participants (duplicates and blanks skipped).
+	if w := c.do("POST", admin+"/invite", url.Values{"names": {"Anna\n\nBen\nanna"}}); w.Code != 303 {
+		t.Fatalf("invite: %d", w.Code)
+	}
+	body := c.do("GET", "/p/"+id, nil).Body.String()
+	if !strings.Contains(body, "Anna") || !strings.Contains(body, "Ben") {
+		t.Fatal("invited names missing")
+	}
+
+	// Delete confirmation card, then delete.
+	w := c.do("GET", "/p/"+id+"?delete=1", nil)
+	if !strings.Contains(w.Body.String(), "/delete_participant") {
+		t.Fatal("no delete confirmation")
+	}
+	if w := c.do("POST", "/p/"+id+"/delete_participant", url.Values{"participant": {"1"}}); w.Code != 303 {
+		t.Fatalf("delete participant: %d", w.Code)
+	}
+	if strings.Contains(c.do("GET", "/p/"+id, nil).Body.String(), "Anna") {
+		t.Fatal("Anna should be deleted")
+	}
+
+	// Password validation.
+	if w := c.do("POST", admin+"/set_password", url.Values{"role": {"participant"}, "password": {"short"}, "password2": {"short"}}); w.Code != 422 {
+		t.Fatalf("short pw: %d", w.Code)
+	}
+	if w := c.do("POST", admin+"/set_password", url.Values{"role": {"participant"}, "password": {"longenough1"}, "password2": {"different11"}}); w.Code != 422 {
+		t.Fatalf("mismatch: %d", w.Code)
+	}
+
+	// Participant password locks the poll for everyone without the cookie.
+	w = c.do("POST", admin+"/set_password", url.Values{"role": {"participant"}, "password": {"secret-pw-1"}, "password2": {"secret-pw-1"}})
+	if w.Code != 303 {
+		t.Fatalf("set pw: %d", w.Code)
+	}
+	for _, p := range []string{"/p/" + id, "/p/" + id + "/export.csv", "/p/" + id + "/feed.atom"} {
+		if w := c.do("GET", p, nil); w.Code != 401 {
+			t.Fatalf("%s unlocked: %d", p, w.Code)
+		}
+	}
+	if w := c.do("POST", "/p/"+id+"/vote", url.Values{"name": {"X"}}); w.Code != 401 {
+		t.Fatalf("vote without pw: %d", w.Code)
+	}
+	if w := c.do("POST", "/p/"+id+"/unlock", url.Values{"password": {"nope"}}); w.Code != 401 {
+		t.Fatalf("wrong pw: %d", w.Code)
+	}
+	w = c.do("POST", "/p/"+id+"/unlock", url.Values{"password": {"secret-pw-1"}})
+	if w.Code != 303 || len(w.Result().Cookies()) == 0 {
+		t.Fatalf("unlock: %d", w.Code)
+	}
+	ck := w.Result().Cookies()[0]
+	cookie := ck.Name + "=" + ck.Value
+	if w := c.do("GET", "/p/"+id, nil, "Cookie", cookie); w.Code != 200 {
+		t.Fatalf("with cookie: %d", w.Code)
+	}
+	// Cookie from another poll / forged value does not work.
+	if w := c.do("GET", "/p/"+id, nil, "Cookie", ck.Name+"=deadbeef"); w.Code != 401 {
+		t.Fatalf("forged cookie: %d", w.Code)
+	}
+	// Admin page itself is not locked by the participant password.
+	if w := c.do("GET", admin, nil); w.Code != 200 {
+		t.Fatalf("admin: %d", w.Code)
+	}
+
+	// Admin password adds a second lock on the admin page.
+	w = c.do("POST", admin+"/set_password", url.Values{"role": {"admin"}, "password": {"admin-pw-123"}, "password2": {"admin-pw-123"}})
+	if w.Code != 303 {
+		t.Fatalf("set admin pw: %d", w.Code)
+	}
+	if w := c.do("GET", admin, nil); w.Code != 401 {
+		t.Fatalf("admin should be locked: %d", w.Code)
+	}
+	if w := c.do("POST", admin+"/delete_poll", url.Values{}); w.Code != 401 {
+		t.Fatalf("admin action should be locked: %d", w.Code)
+	}
+	w = c.do("POST", admin+"/unlock", url.Values{"password": {"admin-pw-123"}})
+	if w.Code != 303 {
+		t.Fatalf("admin unlock: %d", w.Code)
+	}
+	var ac string
+	for _, k := range w.Result().Cookies() {
+		ac = k.Name + "=" + k.Value
+	}
+	if w := c.do("GET", admin, nil, "Cookie", ac); w.Code != 200 {
+		t.Fatalf("admin with cookie: %d", w.Code)
+	}
+	// Admin cookie also opens the participant area.
+	if w := c.do("GET", "/p/"+id, nil, "Cookie", ac); w.Code != 200 {
+		t.Fatalf("admin cookie on poll: %d", w.Code)
+	}
+	// Removing the participant password re-opens the poll and invalidates nothing else.
+	if w := c.do("POST", admin+"/remove_password", url.Values{"role": {"participant"}}, "Cookie", ac); w.Code != 303 {
+		t.Fatalf("remove pw: %d", w.Code)
+	}
+	if w := c.do("GET", "/p/"+id, nil); w.Code != 200 {
+		t.Fatalf("poll should be open again: %d", w.Code)
+	}
+}
+
+func TestPasswordHash(t *testing.T) {
+	h, err := hashPassword("correct horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !checkPassword("correct horse", h) || checkPassword("wrong", h) || checkPassword("x", "garbage") {
+		t.Fatal("password check broken")
+	}
+}

@@ -1,0 +1,14 @@
+{{define "content"}}
+<section class="hero small">
+  <h1>{{.T "unlock_title"}}</h1>
+  <p class="lead">{{if eq .UnlockRole "admin"}}{{.T "unlock_admin_lead"}}{{else}}{{.T "unlock_lead"}}{{end}}</p>
+</section>
+{{if .Error}}<div class="alert error" role="alert">{{.Error}}</div>{{end}}
+<form class="card" method="post" action="{{.UnlockAction}}">
+  <div class="field">
+    <label for="password">{{.T "pw_label"}}</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" maxlength="200" required autofocus>
+  </div>
+  <button class="btn primary" type="submit">{{.T "unlock_btn"}}</button>
+</form>
+{{end}}
