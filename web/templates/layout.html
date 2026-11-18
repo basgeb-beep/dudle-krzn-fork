@@ -1,5 +1,5 @@
 {{define "layout"}}<!doctype html>
-<html lang="{{.Lang}}">
+<html lang="{{.LangTag}}" dir="{{.Dir}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,14 +16,20 @@
   <a class="brand" href="/"><img src="/static/favicon.svg" alt="" width="28" height="28"><span>Dudle</span></a>
   <span class="tagline">{{.T "tagline"}}</span>
   <a class="btn small ghost" href="/">{{.T "new_poll"}}</a>
+  <details class="langmenu">
+    <summary aria-label="{{.T "language"}}"><span aria-hidden="true">🌐</span> {{.LangName .Lang}}</summary>
+    <ul>
+      {{range .Langs}}<li><a href="{{$.Path}}?lang={{.}}" hreflang="{{.}}" lang="{{.}}"{{if eq . $.Lang}} aria-current="true"{{end}}>{{$.LangName .}}</a></li>{{end}}
+    </ul>
+  </details>
 </header>
 <main id="main">
 {{template "content" .}}
 </main>
 <footer>
   <span>{{.T "footer_note"}}</span>
-  <nav aria-label="{{.T "language"}}">
-    {{range .Langs}}<a href="{{$.Path}}?lang={{.}}" hreflang="{{.}}"{{if eq . $.Lang}} aria-current="true"{{end}}>{{$.LangName .}}</a>{{end}}
+  <nav class="footlangs" aria-label="{{.T "language"}}">
+    {{range .Langs}}<a href="{{$.Path}}?lang={{.}}" hreflang="{{.}}" lang="{{.}}"{{if eq . $.Lang}} aria-current="true"{{end}}>{{$.LangName .}}</a>{{end}}
   </nav>
 </footer>
 </body>

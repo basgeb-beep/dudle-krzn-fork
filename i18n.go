@@ -6,9 +6,17 @@ import (
 	"strings"
 )
 
-var supportedLangs = []string{"en", "de"}
+// Languages of the original dudle, plus English. Codes with an underscore
+// (es_AR, pt_BR) are written as BCP 47 tags (es-AR, pt-BR) in HTML.
+var supportedLangs = []string{"en", "de", "ar", "bg", "ca", "cs", "da", "eo", "es", "es_AR", "et", "fi", "fr", "gl", "he", "hu", "it", "ln", "nl", "no", "pl", "pt_BR", "ru", "sv", "sw", "tr"}
 
-var langNames = map[string]string{"en": "English", "de": "Deutsch"}
+var langNames = map[string]string{
+	"en": "English", "de": "Deutsch", "ar": "العربية", "bg": "Български", "ca": "Català", "cs": "Čeština",
+	"da": "Dansk", "eo": "Esperanto", "es": "Español", "es_AR": "Español (Argentina)", "et": "Eesti",
+	"fi": "Suomi", "fr": "Français", "gl": "Galego", "he": "עברית", "hu": "Magyar", "it": "Italiano",
+	"ln": "Lingála", "nl": "Nederlands", "no": "Norsk", "pl": "Polski", "pt_BR": "Português (Brasil)",
+	"ru": "Русский", "sv": "Svenska", "sw": "Kiswahili", "tr": "Türkçe",
+}
 
 func isSupported(l string) bool {
 	for _, s := range supportedLangs {
@@ -19,6 +27,32 @@ func isSupported(l string) bool {
 	return false
 }
 
+// matchLang maps a language tag such as "pt-br", "nb" or "de-AT" to a supported code ("" if none).
+func matchLang(tag string) string {
+	tag = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(tag), "-", "_"))
+	for _, s := range supportedLangs {
+		if strings.ToLower(s) == tag {
+			return s
+		}
+	}
+	if i := strings.Index(tag, "_"); i > 0 {
+		tag = tag[:i]
+	}
+	switch tag {
+	case "nb", "nn":
+		tag = "no"
+	}
+	for _, s := range supportedLangs {
+		if s == tag {
+			return s
+		}
+	}
+	return ""
+}
+
+// rtlLangs are written right to left.
+var rtlLangs = map[string]bool{"ar": true, "he": true}
+
 // detectLang picks the language from ?lang, the cookie, or Accept-Language.
 func detectLang(r *http.Request) string {
 	if l := r.URL.Query().Get("lang"); isSupported(l) {
@@ -28,12 +62,8 @@ func detectLang(r *http.Request) string {
 		return c.Value
 	}
 	for _, part := range strings.Split(r.Header.Get("Accept-Language"), ",") {
-		tag := strings.ToLower(strings.TrimSpace(strings.SplitN(part, ";", 2)[0]))
-		if i := strings.IndexAny(tag, "-_"); i > 0 {
-			tag = tag[:i]
-		}
-		if isSupported(tag) {
-			return tag
+		if l := matchLang(strings.SplitN(part, ";", 2)[0]); l != "" {
+			return l
 		}
 	}
 	return "en"
@@ -65,9 +95,9 @@ var messages = map[string]map[string]string{
 		"f_title_ph":          "e.g. Team dinner",
 		"f_desc":              "Description (optional)",
 		"f_desc_ph":           "Where, what, anything participants should know …",
-		"f_kind":              "What do you want to schedule?",
-		"kind_date":           "Dates",
-		"kind_text":           "Free choices",
+		"f_kind":              "What kind of poll?",
+		"kind_date":           "Scheduling poll",
+		"kind_text":           "Normal poll",
 		"f_dates":             "Pick the possible dates",
 		"f_dates_hint":        "Click days in the calendar. Add a time if you need one.",
 		"f_choices":           "Options, one per line",
@@ -160,6 +190,9 @@ var messages = map[string]map[string]string{
 		"not_found_h":         "Page not found",
 		"not_found_p":         "This poll doesn’t exist (anymore). Polls are removed after a period of inactivity.",
 		"back_home":           "Back to start",
+		"skip":                "Skip to content",
+		"a11y_link":           "Accessibility",
+		"dp_count":            "Selected: {n}",
 	},
 	"de": {
 		"tagline":             "Termine finden. Ohne Chaos.",
@@ -172,9 +205,9 @@ var messages = map[string]map[string]string{
 		"f_title_ph":          "z. B. Teamessen",
 		"f_desc":              "Beschreibung (optional)",
 		"f_desc_ph":           "Wo, was, alles was die Teilnehmenden wissen sollten …",
-		"f_kind":              "Was möchtest du planen?",
-		"kind_date":           "Termine",
-		"kind_text":           "Freie Auswahl",
+		"f_kind":              "Welche Art von Umfrage?",
+		"kind_date":           "Terminumfrage",
+		"kind_text":           "Normale Umfrage",
 		"f_dates":             "Mögliche Termine auswählen",
 		"f_dates_hint":        "Klicke Tage im Kalender an. Bei Bedarf kannst du eine Uhrzeit ergänzen.",
 		"f_choices":           "Optionen, eine pro Zeile",
@@ -267,5 +300,8 @@ var messages = map[string]map[string]string{
 		"not_found_h":         "Seite nicht gefunden",
 		"not_found_p":         "Diese Umfrage gibt es (nicht mehr). Umfragen werden nach längerer Inaktivität gelöscht.",
 		"back_home":           "Zur Startseite",
+		"skip":                "Zum Inhalt springen",
+		"a11y_link":           "Barrierefreiheit",
+		"dp_count":            "Ausgewählt: {n}",
 	},
 }

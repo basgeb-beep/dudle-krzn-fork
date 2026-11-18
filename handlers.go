@@ -154,6 +154,17 @@ type View struct {
 
 func (v *View) T(key string, args ...any) string { return tr(v.Lang, key, args...) }
 func (v *View) LangName(l string) string         { return langNames[l] }
+
+// LangTag is the BCP 47 tag for the html lang attribute (es_AR -> es-AR).
+func (v *View) LangTag() string { return strings.ReplaceAll(v.Lang, "_", "-") }
+
+// Dir is the text direction of the current language.
+func (v *View) Dir() string {
+	if rtlLangs[v.Lang] {
+		return "rtl"
+	}
+	return "ltr"
+}
 func (v *View) Symbol(val int) string {
 	switch val {
 	case VoteYes:

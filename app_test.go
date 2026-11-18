@@ -126,7 +126,11 @@ func TestMessagesComplete(t *testing.T) {
 func TestDetectLang(t *testing.T) {
 	cases := []struct{ accept, query, want string }{
 		{"de-DE,de;q=0.9,en;q=0.8", "", "de"},
-		{"fr-FR,fr;q=0.9", "", "en"},
+		{"fr-FR,fr;q=0.9", "", "fr"},
+		{"pt-BR,pt;q=0.9", "", "pt_BR"},
+		{"es-AR", "", "es_AR"},
+		{"nb-NO", "", "no"},
+		{"zh-CN,ja", "", "en"},
 		{"", "", "en"},
 		{"en-US", "?lang=de", "de"},
 		{"de", "?lang=xx", "de"},
@@ -695,5 +699,41 @@ func TestBasePath(t *testing.T) {
 	w = c.do("POST", "/dudle/p/"+id+"/unlock", url.Values{"password": {"secret-pw-1"}})
 	if cs := w.Result().Cookies(); w.Code != 303 || len(cs) == 0 || cs[0].Path != "/dudle/p/"+id {
 		t.Fatalf("cookie path: %d %v", w.Code, w.Result().Cookies())
+	}
+}
+
+func TestDateNamesComplete(t *testing.T) {
+	for _, l := range supportedLangs {
+		if len(weekdays[l]) != 7 || len(months[l]) != 12 {
+			t.Errorf("lang %s: incomplete weekday/month names", l)
+		}
+		if langNames[l] == "" {
+			t.Errorf("lang %s: no display name", l)
+		}
+	}
+}
+
+func TestAllLanguagesRender(t *testing.T) {
+	c := newClient(t)
+	loc := c.do("POST", "/create", url.Values{"title": {"T"}, "kind": {"date"}, "date": {"2026-12-01", "2026-12-02"}, "time": {"", "09:00"}}).Header().Get("Location")
+	id := strings.Split(loc, "/")[2]
+	for _, l := range supportedLangs {
+		for _, p := range []string{"/", "/p/" + id, loc, "/nope"} {
+			w := c.do("GET", p+"?lang="+l, nil)
+			body := w.Body.String()
+			if w.Code != 200 && w.Code != 404 {
+				t.Errorf("%s %s: status %d", l, p, w.Code)
+			}
+			tag := strings.ReplaceAll(l, "_", "-")
+			if !strings.Contains(body, `<html lang="`+tag+`"`) {
+				t.Errorf("%s %s: wrong html lang", l, p)
+			}
+			if (l == "ar" || l == "he") != strings.Contains(body, `dir="rtl"`) {
+				t.Errorf("%s %s: wrong text direction", l, p)
+			}
+			if strings.Contains(body, "{{") || strings.Contains(body, "%!") {
+				t.Errorf("%s %s: template/format error in output", l, p)
+			}
+		}
 	}
 }
