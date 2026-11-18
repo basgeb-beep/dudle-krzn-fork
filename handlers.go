@@ -30,6 +30,8 @@ type Server struct {
 	baseURL string // optional fixed public base URL
 
 	contact       string   // operator contact for accessibility feedback (email, URL or text)
+	imprintURL    string   // link to the operator's legal notice
+	privacyURL    string   // link to the operator's privacy policy
 	basePath      string   // optional URL path prefix, e.g. "/dudle"
 	secret        []byte   // signs unlock cookies
 	unlockLimiter *limiter // brute-force protection for password forms
@@ -142,6 +144,7 @@ type Row struct {
 	Name    string
 	Cells   []Cell
 	Editing bool
+	CanEdit bool // the viewer owns this row or manages the poll
 }
 
 type CommentView struct {
@@ -188,6 +191,8 @@ type View struct {
 	UnlockRole   string
 	UnlockAction string
 	Contact      string
+	ImprintURL   string
+	PrivacyURL   string
 	DurationText string
 	DurOpts      []DurOpt
 	DurCustom    int
@@ -249,7 +254,8 @@ func langOf(r *http.Request) string {
 }
 
 func (s *Server) newView(r *http.Request) *View {
-	return &View{Lang: langOf(r), Path: r.URL.Path, Langs: supportedLangs, Status: http.StatusOK}
+	return &View{Lang: langOf(r), Path: r.URL.Path, Langs: supportedLangs, Status: http.StatusOK,
+		ImprintURL: s.imprintURL, PrivacyURL: s.privacyURL}
 }
 
 func (s *Server) render(w http.ResponseWriter, page string, v *View) {
@@ -284,7 +290,7 @@ func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) serverError(w http.ResponseWriter, r *http.Request, err error) {
-	log.Printf("%s %s: %v", r.Method, r.URL.Path, err)
+	log.Printf("%s %s: %v", r.Method, redactPath(r.URL.Path), err)
 	s.fail(w, r, http.StatusInternalServerError, "err_generic", "err_generic")
 }
 
@@ -354,7 +360,7 @@ func (s *Server) middleware(next http.Handler) http.Handler {
 		r = r.WithContext(context.WithValue(r.Context(), langKey, lang))
 		next.ServeHTTP(w, r)
 		if !strings.HasPrefix(r.URL.Path, "/static/") && r.URL.Path != "/healthz" {
-			log.Printf("%s %s %s", r.Method, r.URL.Path, time.Since(start).Round(time.Microsecond))
+			log.Printf("%s %s %s", r.Method, redactPath(r.URL.Path), time.Since(start).Round(time.Microsecond))
 		}
 	})
 }
@@ -489,7 +495,7 @@ func (s *Server) pollView(r *http.Request, d *PollData) *View {
 	v.Opts, v.Groups, v.Best = sum.Options, sum.Groups, sum.Best
 	v.NumVoters = len(d.Participants)
 	for _, p := range d.Participants {
-		row := Row{ID: p.ID, Name: p.Name}
+		row := Row{ID: p.ID, Name: p.Name, CanEdit: s.canEdit(r, &d.Poll, p)}
 		for _, o := range d.Options {
 			row.Cells = append(row.Cells, Cell{OptID: o.ID, Value: p.Votes[o.ID]})
 		}
@@ -515,7 +521,7 @@ func (s *Server) poll(w http.ResponseWriter, r *http.Request) {
 	v := s.pollView(r, d)
 	if id, _ := strconv.ParseInt(r.URL.Query().Get("edit"), 10, 64); id > 0 && !d.Poll.Closed {
 		for i := range v.Rows {
-			if v.Rows[i].ID == id {
+			if v.Rows[i].ID == id && v.Rows[i].CanEdit {
 				v.Rows[i].Editing = true
 				v.EditID = id
 			}
@@ -523,7 +529,7 @@ func (s *Server) poll(w http.ResponseWriter, r *http.Request) {
 	}
 	if id, _ := strconv.ParseInt(r.URL.Query().Get("delete"), 10, 64); id > 0 && !d.Poll.Closed {
 		for _, row := range v.Rows {
-			if row.ID == id {
+			if row.ID == id && row.CanEdit {
 				v.DeleteID, v.DeleteName = id, row.Name
 			}
 		}
@@ -546,6 +552,10 @@ func (s *Server) deleteParticipant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, _ := strconv.ParseInt(r.FormValue("participant"), 10, 64)
+	if pt := d.participant(id); pt == nil || !s.canEdit(r, &d.Poll, *pt) {
+		s.fail(w, r, http.StatusForbidden, "err_generic", "err_not_yours")
+		return
+	}
 	if err := s.store.DeleteParticipant(d.Poll.ID, id); err != nil {
 		s.serverError(w, r, err)
 		return
@@ -573,6 +583,17 @@ func (s *Server) vote(w http.ResponseWriter, r *http.Request) {
 		votes[o.ID] = val
 	}
 
+	token := randID(24)
+	if pid > 0 {
+		pt := d.participant(pid)
+		if pt == nil || !s.canEdit(r, &d.Poll, *pt) {
+			s.fail(w, r, http.StatusForbidden, "err_generic", "err_not_yours")
+			return
+		}
+		if pt.Token == "" && s.isManager(r, &d.Poll) {
+			token = "" // the manager filling in an invited row must not take it over
+		}
+	}
 	var msg string
 	switch {
 	case d.Poll.Closed:
@@ -580,9 +601,12 @@ func (s *Server) vote(w http.ResponseWriter, r *http.Request) {
 	case name == "" || tooLong(name, maxName):
 		msg = "err_name"
 	default:
-		_, err := s.store.SaveVote(d.Poll.ID, pid, name, votes)
+		newID, err := s.store.SaveVote(d.Poll.ID, pid, name, votes, token)
 		switch {
 		case err == nil:
+			if pt := d.participant(newID); token != "" && (pt == nil || pt.Token == "") {
+				s.rememberOwn(w, r, d.Poll.ID, newID, token) // new or freshly claimed row
+			}
 			http.Redirect(w, r, "/p/"+d.Poll.ID+"#participants", http.StatusSeeOther)
 			return
 		case errors.Is(err, ErrNameTaken):
@@ -769,6 +793,7 @@ func (s *Server) admin(w http.ResponseWriter, r *http.Request) {
 	if d == nil {
 		return
 	}
+	s.rememberManager(w, r, &d.Poll)
 	s.render(w, "admin", s.adminView(r, d))
 }
 
@@ -934,4 +959,9 @@ func (v *View) ContactHref() string {
 		return "mailto:" + v.Contact
 	}
 	return ""
+}
+
+// SetLegalLinks sets the links to the operator's legal notice and privacy policy.
+func (s *Server) SetLegalLinks(imprint, privacy string) {
+	s.imprintURL, s.privacyURL = strings.TrimSpace(imprint), strings.TrimSpace(privacy)
 }

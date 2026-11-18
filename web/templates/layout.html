@@ -26,7 +26,7 @@
 {{template "content" .}}
 </main>
 <footer>
-  <span>{{.T "footer_note"}} · <a href="/accessibility">{{.T "a11y_link"}}</a></span>
+  <span>{{.T "footer_note"}} · <a href="/accessibility">{{.T "a11y_link"}}</a>{{if .ImprintURL}} · <a href="{{.ImprintURL}}">{{.T "imprint"}}</a>{{end}}{{if .PrivacyURL}} · <a href="{{.PrivacyURL}}">{{.T "privacy"}}</a>{{end}}</span>
   <nav class="footlangs" aria-label="{{.T "language"}}">
     {{range .Langs}}<a href="{{$.Path}}?lang={{.}}" hreflang="{{tag .}}" lang="{{tag .}}"{{if eq . $.Lang}} aria-current="true"{{end}}>{{$.LangName .}}</a>{{end}}
   </nav>
