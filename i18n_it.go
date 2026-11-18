@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Pagina non trovata",
 		"not_found_p":         "Questo sondaggio non esiste (più). I sondaggi vengono rimossi dopo un periodo di inattività.",
 		"back_home":           "Torna all’inizio",
+		"dp_copy_all":         "Applica questi orari a tutti i giorni",
+		"more_settings":       "Altre impostazioni",
 		"imprint":             "Note legali",
 		"privacy":             "Privacy",
 		"err_not_yours":       "Puoi modificare solo la tua voce. Rivolgiti a chi organizza il sondaggio se qualcosa va corretto.",

@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Pagina niet gevonden",
 		"not_found_p":         "Deze poll bestaat niet (meer). Polls worden na een periode van inactiviteit verwijderd.",
 		"back_home":           "Terug naar het begin",
+		"dp_copy_all":         "Deze tijden voor alle dagen gebruiken",
+		"more_settings":       "Meer instellingen",
 		"imprint":             "Colofon",
 		"privacy":             "Privacy",
 		"err_not_yours":       "Je kunt alleen je eigen invoer wijzigen. Neem contact op met de organisator als er iets moet worden gecorrigeerd.",

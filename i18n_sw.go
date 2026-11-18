@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Ukurasa haujapatikana",
 		"not_found_p":         "Kura hii ya maoni haipo (tena). Kura za maoni huondolewa baada ya kipindi cha kutotumika.",
 		"back_home":           "Rudi mwanzo",
+		"dp_copy_all":         "Tumia saa hizi kwa siku zote",
+		"more_settings":       "Mipangilio zaidi",
 		"imprint":             "Taarifa za kisheria",
 		"privacy":             "Faragha",
 		"err_not_yours":       "Unaweza kubadilisha kiingilio chako tu. Ikiwa kitu kinahitaji kurekebishwa, wasiliana na mratibu wa kura ya maoni.",

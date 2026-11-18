@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Sivua ei löytynyt",
 		"not_found_p":         "Tätä kyselyä ei ole (enää). Kyselyt poistetaan, kun niitä ei ole käytetty tietyn ajan kuluessa.",
 		"back_home":           "Takaisin alkuun",
+		"dp_copy_all":         "Käytä näitä aikoja kaikille päiville",
+		"more_settings":       "Lisäasetukset",
 		"imprint":             "Oikeudelliset tiedot",
 		"privacy":             "Tietosuoja",
 		"err_not_yours":       "Voit muuttaa vain omaa vastaustasi. Ota yhteyttä kyselyn järjestäjään, jos jotain pitää korjata.",

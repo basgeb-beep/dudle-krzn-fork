@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Lehte ei leitud",
 		"not_found_p":         "Seda küsitlust ei ole (enam). Küsitlused eemaldatakse pärast teatud tegevusetuse perioodi.",
 		"back_home":           "Tagasi algusesse",
+		"dp_copy_all":         "Kasuta neid kellaaegu kõigil päevadel",
+		"more_settings":       "Rohkem seadeid",
 		"imprint":             "Õiguslik teave",
 		"privacy":             "Privaatsus",
 		"err_not_yours":       "Sa saad muuta ainult oma kirjet. Kui midagi on vaja parandada, pöördu küsitluse korraldaja poole.",

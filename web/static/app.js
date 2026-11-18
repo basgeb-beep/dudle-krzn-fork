@@ -143,11 +143,22 @@
           const ins = row && row.querySelectorAll('.slot input[type=time]');
           if (ins && ins.length) ins[ins.length - 1].focus();
         });
+        const extra = el('div', { className: 'dayactions' }, add);
+        if (picked.size > 1 && times.some(Boolean)) {
+          const copy = el('button', { type: 'button', className: 'add-time', textContent: '⇉ ' + L.copyall });
+          copy.addEventListener('click', () => {
+            const src = times.filter(Boolean);
+            picked.forEach((_, d) => { if (d !== k) picked.set(d, [...src]); });
+            drawList();
+            status.textContent = L.copyall + ' ✓';
+          });
+          extra.append(copy);
+        }
         const rm = el('button', { type: 'button', className: 'rm', title: L.remove }, el('span', { textContent: '×', ariaHidden: 'true' }));
         rm.setAttribute('aria-label', L.remove + ': ' + fmtDay.format(parse(k)));
         rm.addEventListener('click', () => { picked.delete(k); drawCal(); drawList(); });
         const li = el('li', {}, el('span', { className: 'd', textContent: fmtDay.format(parse(k)) }),
-          el('div', { className: 'times' }, chips, out, add), rm);
+          el('div', { className: 'times' }, chips, out, extra), rm);
         li.dataset.day = k;
         list.append(li);
       });
@@ -168,17 +179,51 @@
     drawCal(); drawList();
   });
 
-  // ---- duration select: show the free entry only for "custom", hide times for "all day"
-  document.querySelectorAll('select#duration').forEach((sel) => {
-    const custom = document.querySelector('.dur-custom');
-    const dp = sel.closest('form')?.querySelector('.datepicker');
+  // ---- duration chips: free entry only for "custom", hide times for "all day"
+  document.querySelectorAll('.dur').forEach((box) => {
+    const custom = box.querySelector('.dur-custom');
+    const dp = box.closest('form')?.querySelector('.datepicker');
     const sync = () => {
-      if (custom) custom.hidden = sel.value !== 'custom';
-      if (dp) dp.classList.toggle('allday', sel.value === '1440');
+      const v = box.querySelector('input[name=duration]:checked')?.value;
+      if (custom) custom.hidden = v !== 'custom';
+      if (dp) dp.classList.toggle('allday', v === '1440');
     };
-    sel.addEventListener('change', sync);
+    box.addEventListener('change', sync);
     sync();
   });
+
+  // ---- create form: reveal one step after the other ----------------------------
+  const create = document.querySelector('form.create');
+  if (create) {
+    const title = create.querySelector('#title');
+    const choices = create.querySelector('#choices');
+    const show = (name) => create.querySelectorAll(`[data-step="${name}"].step-hidden`).forEach((e) => {
+      e.classList.remove('step-hidden');
+      e.classList.add('step-in');
+    });
+    if (!title.value.trim()) { // fresh form: start with title and description only
+      create.querySelectorAll('input[name=kind]').forEach((k) => { k.checked = false; });
+      create.querySelectorAll('[data-step]').forEach((e) => e.classList.add('step-hidden'));
+    }
+    const update = () => {
+      if (title.value.trim()) show('kind');
+      const kind = create.querySelector('input[name=kind]:checked')?.value;
+      if (kind === 'date') {
+        show('dates');
+        if (create.querySelector('.picked li[data-day]')) { show('duration'); show('finish'); }
+      } else if (kind === 'text') {
+        show('choices');
+        if (choices.value.trim()) show('finish');
+      }
+    };
+    create.addEventListener('input', update);
+    create.addEventListener('change', update);
+    create.addEventListener('click', () => setTimeout(update));
+    create.addEventListener('submit', (e) => {
+      if (create.querySelector('[data-step="finish"].step-hidden')) { e.preventDefault(); update(); }
+    });
+    update();
+  }
 
   // ---- copy buttons ------------------------------------------------------------
   document.querySelectorAll('[data-copy]').forEach((btn) => {

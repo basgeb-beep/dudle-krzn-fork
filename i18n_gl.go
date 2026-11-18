@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Páxina non atopada",
 		"not_found_p":         "Esta enquisa non existe (ou xa non existe). As enquisas elimínanse tras un período de inactividade.",
 		"back_home":           "Volver ao inicio",
+		"dp_copy_all":         "Aplicar estas horas a todos os días",
+		"more_settings":       "Máis opcións",
 		"imprint":             "Aviso legal",
 		"privacy":             "Privacidade",
 		"err_not_yours":       "Só podes cambiar a túa propia entrada. Se hai que corrixir algo, diríxete a quen organiza a enquisa.",

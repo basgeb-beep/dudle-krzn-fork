@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Sidan hittades inte",
 		"not_found_p":         "Den här omröstningen finns inte (längre). Omröstningar tas bort efter en tids inaktivitet.",
 		"back_home":           "Tillbaka till start",
+		"dp_copy_all":         "Använd tiderna för alla dagar",
+		"more_settings":       "Fler inställningar",
 		"imprint":             "Juridisk information",
 		"privacy":             "Integritet",
 		"err_not_yours":       "Du kan bara ändra ditt eget svar. Kontakta den som ordnar omröstningen om något behöver rättas.",

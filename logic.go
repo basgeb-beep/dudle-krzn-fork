@@ -271,9 +271,24 @@ func parseDuration(sel, custom string) (int, error) {
 	return n, nil
 }
 
-// formatDuration renders minutes as H:MM ("1:30 h"); all-day is handled by the caller.
-func formatDuration(min int) string {
-	return fmt.Sprintf("%d:%02d h", min/60, min%60)
+// dotDecimal lists languages that write 1.5 instead of 1,5.
+var dotDecimal = map[string]bool{"en": true, "he": true, "ar": true, "sw": true}
+
+// formatDuration renders minutes compactly: "15 min", "1 h", "1,5 h", "1 h 20 min".
+func formatDuration(min int, lang string) string {
+	switch {
+	case min < 60:
+		return fmt.Sprintf("%d min", min)
+	case min%60 == 0:
+		return fmt.Sprintf("%d h", min/60)
+	case min%30 == 0:
+		sep := ","
+		if dotDecimal[lang] {
+			sep = "."
+		}
+		return fmt.Sprintf("%d%s5 h", min/60, sep)
+	}
+	return fmt.Sprintf("%d h %d min", min/60, min%60)
 }
 
 // timeRange turns a start time and a duration into "09:00–10:30". Without a

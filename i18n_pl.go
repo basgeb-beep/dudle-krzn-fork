@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Nie znaleziono strony",
 		"not_found_p":         "Ta ankieta nie istnieje (już). Ankiety są usuwane po okresie braku aktywności.",
 		"back_home":           "Powrót na start",
+		"dp_copy_all":         "Zastosuj te godziny do wszystkich dni",
+		"more_settings":       "Więcej ustawień",
 		"imprint":             "Nota prawna",
 		"privacy":             "Prywatność",
 		"err_not_yours":       "Możesz zmienić tylko własny wpis. Jeśli coś trzeba poprawić, zwróć się do organizatora ankiety.",

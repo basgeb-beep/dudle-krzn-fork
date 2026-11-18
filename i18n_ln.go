@@ -105,6 +105,8 @@ func init() {
 		"not_found_h":         "Lokasa emonani te",
 		"not_found_p":         "Botuni oyo ezali te (lisusu). Botuni ekolongolama nsima ya ntango ya kosala te.",
 		"back_home":           "Zonga na ebandeli",
+		"dp_copy_all":         "Tia bangonga oyo na mikolo nyonso",
+		"more_settings":       "Mikano mosusu",
 		"imprint":             "Makambo ya mibeko",
 		"privacy":             "Bomoi ya sekele",
 		"err_not_yours":       "Okoki kobongola kaka eyano na yo. Soki esengeli kobongisa likambo, tuna moto oyo abongisi botuni.",
