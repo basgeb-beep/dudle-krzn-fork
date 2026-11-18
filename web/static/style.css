@@ -174,7 +174,13 @@ textarea { resize: vertical; }
 .picked { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
 .picked li { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px 6px 12px; }
 .picked li.none { background: none; border-style: dashed; color: var(--muted); padding: 10px 12px; }
-.picked .d { flex: 1; font-weight: 600; }
+.picked .d { font-weight: 600; min-width: 9.5em; }
+.picked .slots { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.picked .slot { display: inline-flex; align-items: center; gap: 2px; }
+.picked .slot .rm { width: 26px; height: 26px; font-size: 1rem; }
+.picked .add-time { all: unset; cursor: pointer; color: var(--accent); font-size: .9rem; padding: 4px 6px; border-radius: 6px; }
+.picked .add-time:hover { text-decoration: underline; }
+.picked .add-time:focus-visible { outline: 3px solid var(--accent); }
 .picked input[type=time] { width: auto; padding: 6px 8px; }
 .picked .rm { all: unset; cursor: pointer; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); font-size: 1.2rem; }
 .picked .rm:hover { background: var(--danger-bg); color: var(--danger); }

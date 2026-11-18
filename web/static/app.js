@@ -38,10 +38,13 @@
     cal.hidden = false;
 
     const L = dp.dataset;
-    const picked = new Map(); // 'YYYY-MM-DD' -> 'HH:MM' | ''
+    const picked = new Map(); // 'YYYY-MM-DD' -> ['HH:MM' | '', ...] (several times per day)
     (L.initial || '').split(',').filter(Boolean).forEach((s) => {
       const [d, t] = s.split('|');
-      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) picked.set(d, t || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+      const times = picked.get(d) || [];
+      if (!times.includes(t || '')) times.push(t || '');
+      picked.set(d, times);
     });
 
     const pad = (n) => String(n).padStart(2, '0');
@@ -78,7 +81,7 @@
         b.setAttribute('aria-pressed', picked.has(k));
         b.disabled = k < todayIso && !picked.has(k);
         b.addEventListener('click', () => {
-          picked.has(k) ? picked.delete(k) : picked.set(k, '');
+          picked.has(k) ? picked.delete(k) : picked.set(k, ['']);
           drawCal(); drawList();
         });
         grid.append(b);
@@ -90,16 +93,50 @@
       list.replaceChildren();
       if (!picked.size) { list.append(el('li', { className: 'none', textContent: L.none })); return; }
       [...picked.keys()].sort().forEach((k) => {
-        const time = el('input', { type: 'time', name: 'time', value: picked.get(k), title: L.time });
-        time.setAttribute('aria-label', L.time);
-        time.addEventListener('input', () => picked.set(k, time.value));
+        const times = picked.get(k);
+        const slots = el('div', { className: 'slots' });
+        times.forEach((val, i) => {
+          const time = el('input', { type: 'time', name: 'time', value: val, title: L.time });
+          time.setAttribute('aria-label', L.time);
+          time.addEventListener('input', () => { times[i] = time.value; });
+          const slot = el('span', { className: 'slot' }, el('input', { type: 'hidden', name: 'date', value: k }), time);
+          if (times.length > 1) {
+            const rmt = el('button', { type: 'button', className: 'rm', textContent: '×', title: L.remove });
+            rmt.setAttribute('aria-label', L.remove + ': ' + fmtDay.format(parse(k)) + ' ' + (val || ''));
+            rmt.addEventListener('click', () => { times.splice(i, 1); drawList(); });
+            slot.append(rmt);
+          }
+          slots.append(slot);
+        });
+        const add = el('button', { type: 'button', className: 'add-time', textContent: '+ ' + L.addtime });
+        add.addEventListener('click', () => {
+          times.push(''); drawList();
+          const row = [...list.querySelectorAll('li[data-day]')].find((x) => x.dataset.day === k);
+          const ins = row && row.querySelectorAll('input[type=time]');
+          if (ins && ins.length) ins[ins.length - 1].focus();
+        });
+        slots.append(add);
         const rm = el('button', { type: 'button', className: 'rm', textContent: '×', title: L.remove });
         rm.setAttribute('aria-label', L.remove + ': ' + fmtDay.format(parse(k)));
         rm.addEventListener('click', () => { picked.delete(k); drawCal(); drawList(); });
-        list.append(el('li', {}, el('input', { type: 'hidden', name: 'date', value: k }),
-          el('span', { className: 'd', textContent: fmtDay.format(parse(k)) }), time, rm));
+        const li = el('li', {}, el('span', { className: 'd', textContent: fmtDay.format(parse(k)) }), slots, rm);
+        li.dataset.day = k;
+        list.append(li);
       });
     }
+
+    // Drop empty "whole day" slots when the same day also has concrete times.
+    const form = dp.closest('form');
+    if (form) form.addEventListener('submit', () => {
+      list.querySelectorAll('li[data-day]').forEach((li) => {
+        const slots = [...li.querySelectorAll('.slot')];
+        if (!slots.some((sl) => sl.querySelector('input[type=time]').value)) return;
+        slots.forEach((sl) => {
+          const t = sl.querySelector('input[type=time]');
+          if (!t.value) { t.disabled = true; sl.querySelector('input[name=date]').disabled = true; }
+        });
+      });
+    });
     drawCal(); drawList();
   });
 
