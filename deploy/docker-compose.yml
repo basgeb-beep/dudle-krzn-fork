@@ -1,0 +1,17 @@
+# Runs Dudle-NG on 127.0.0.1:8080, intended to sit behind nginx under /dudle/.
+services:
+  dudle:
+    build: ..
+    image: dudle-ng:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      DUDLE_BASE_PATH: /dudle
+      DUDLE_TRUST_PROXY: "1"        # nginx appends the real client IP to X-Forwarded-For
+      DUDLE_EXPIRE_DAYS: "365"
+      DUDLE_RATE_LIMIT: "60"
+    volumes:
+      - dudle-data:/data
+volumes:
+  dudle-data:
