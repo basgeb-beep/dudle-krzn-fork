@@ -664,7 +664,7 @@ func TestBasePath(t *testing.T) {
 	}
 	w := c.do("GET", "/dudle/", nil)
 	body := w.Body.String()
-	if w.Code != 200 || !strings.Contains(body, `href="/dudle/static/style.css"`) || !strings.Contains(body, `href="/dudle/"`) ||
+	if w.Code != 200 || !strings.Contains(body, `href="/dudle/static/style.css?v=`+staticVersion+`"`) || !strings.Contains(body, `href="/dudle/"`) ||
 		!strings.Contains(body, `action="/dudle/create"`) {
 		t.Fatalf("links not prefixed: %d", w.Code)
 	}
@@ -1077,5 +1077,19 @@ func TestNoExportOrFeed(t *testing.T) {
 		if w := c.do("GET", "/p/"+id+p, nil); w.Code != 404 {
 			t.Fatalf("%s: %d", p, w.Code)
 		}
+	}
+}
+
+func TestStaticVersioning(t *testing.T) {
+	c := newClient(t)
+	body := c.do("GET", "/", nil).Body.String()
+	if !strings.Contains(body, "/static/app.js?v="+staticVersion) || len(staticVersion) != 12 {
+		t.Fatal("static URLs not versioned")
+	}
+	if w := c.do("GET", "/static/app.js?v="+staticVersion, nil); !strings.Contains(w.Header().Get("Cache-Control"), "immutable") {
+		t.Fatalf("versioned asset cache: %q", w.Header().Get("Cache-Control"))
+	}
+	if w := c.do("GET", "/static/app.js", nil); w.Header().Get("Cache-Control") != "no-cache" {
+		t.Fatalf("unversioned asset cache: %q", w.Header().Get("Cache-Control"))
 	}
 }
