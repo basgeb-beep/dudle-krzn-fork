@@ -194,7 +194,7 @@ func TestStoreLifecycle(t *testing.T) {
 		t.Fatalf("duplicate labels must be ignored, got %d options", len(d.Options))
 	}
 
-	if err := st.UpdateSettings("abc", "New", "desc", false, true, 0); err != nil {
+	if err := st.UpdateSettings("abc", "New", "desc", false, true, 0, ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.SaveVote("abc", 0, "Bob", nil, ""); !errors.Is(err, ErrClosed) {
@@ -947,5 +947,88 @@ func TestRedactPathAndLegalLinks(t *testing.T) {
 	body := (&client{t: t, h: srv.Handler()}).do("GET", "/?lang=de", nil).Body.String()
 	if !strings.Contains(body, `href="https://example.org/impressum">Impressum`) || !strings.Contains(body, `href="https://example.org/datenschutz">Datenschutz`) {
 		t.Fatal("legal links missing")
+	}
+}
+
+func TestFinalizeAndICS(t *testing.T) {
+	c := newClient(t)
+	c.jar = map[string]string{}
+	loc := c.do("POST", "/create", url.Values{"title": {"Team; Treffen, Q4"}, "description": {"Raum 2\nBitte pünktlich"}, "kind": {"date"},
+		"date": {"2026-12-01", "2026-12-02"}, "time": {"09:00", "14:00"}, "duration": {"90"}}).Header().Get("Location")
+	parts := strings.Split(loc, "/")
+	id, admin := parts[2], loc
+	if w := c.do("GET", "/p/"+id+"/event.ics", nil); w.Code != 404 {
+		t.Fatalf("ics before final: %d", w.Code)
+	}
+	adm := c.do("GET", admin, nil).Body.String()
+	opt := regexp.MustCompile(`type="radio" name="option" value="(\d+)"`).FindAllStringSubmatch(adm, -1)
+	if len(opt) != 2 {
+		t.Fatalf("finalize choices: %d", len(opt))
+	}
+	if w := c.do("POST", admin+"/finalize", url.Values{"option": {opt[1][1]}}); w.Code != 303 {
+		t.Fatalf("finalize: %d", w.Code)
+	}
+	body := c.do("GET", "/p/"+id+"?lang=de", nil).Body.String()
+	if !strings.Contains(body, "Der Termin steht fest") || !strings.Contains(body, "14:00–15:30") || !strings.Contains(body, "/event.ics") {
+		t.Fatal("final banner missing")
+	}
+	if !strings.Contains(body, "geschlossen") {
+		t.Fatal("finalizing should close the poll")
+	}
+	w := c.do("GET", "/p/"+id+"/event.ics", nil)
+	ics := w.Body.String()
+	for _, want := range []string{"BEGIN:VCALENDAR\r\n", "DTSTART:20261202T140000\r\n", "DTEND:20261202T153000\r\n",
+		`SUMMARY:Team\; Treffen\, Q4`, `Raum 2\nBitte pünktlich`, "END:VCALENDAR\r\n"} {
+		if !strings.Contains(ics, want) {
+			t.Errorf("ics lacks %q", want)
+		}
+	}
+	if w.Header().Get("Content-Type") != "text/calendar; charset=utf-8" {
+		t.Error("ics content type")
+	}
+	for _, l := range strings.Split(ics, "\r\n") {
+		if len(l) > 75 {
+			t.Errorf("unfolded line: %q", l)
+		}
+	}
+	// someone else cannot finalize
+	if w := c.do("POST", "/p/"+id+"/admin/wrong/finalize", url.Values{"option": {opt[0][1]}}); w.Code != 404 {
+		t.Fatalf("finalize without token: %d", w.Code)
+	}
+	// remove fixed date
+	c.do("POST", admin+"/unfinalize", url.Values{})
+	if strings.Contains(c.do("GET", "/p/"+id+"?lang=de", nil).Body.String(), "Der Termin steht fest") {
+		t.Fatal("unfinalize failed")
+	}
+}
+
+func TestICSAllDay(t *testing.T) {
+	out, err := icsEvent(Poll{ID: "x", Title: "T", Duration: DurAllDay}, "2026-12-31", "https://e.org/p/x", time.Unix(0, 0))
+	if err != nil || !strings.Contains(out, "DTSTART;VALUE=DATE:20261231") || !strings.Contains(out, "DTEND;VALUE=DATE:20270101") {
+		t.Fatalf("all-day ics: %v\n%s", err, out)
+	}
+}
+
+func TestDeadline(t *testing.T) {
+	defer func(f func() string) { today = f }(today)
+	today = func() string { return "2026-11-18" }
+	c := newClient(t)
+	if w := c.do("POST", "/create", url.Values{"title": {"D"}, "kind": {"text"}, "choices": {"A"}, "deadline": {"2026-11-17"}}); w.Code != 422 {
+		t.Fatalf("past deadline accepted: %d", w.Code)
+	}
+	loc := c.do("POST", "/create", url.Values{"title": {"D"}, "kind": {"text"}, "choices": {"A"}, "deadline": {"2026-11-20"}}).Header().Get("Location")
+	id := strings.Split(loc, "/")[2]
+	if b := c.do("GET", "/p/"+id+"?lang=de", nil).Body.String(); !strings.Contains(b, "Antworten sind bis") || !strings.Contains(b, "20. Nov 2026") {
+		t.Fatal("deadline note missing")
+	}
+	if w := c.do("POST", "/p/"+id+"/vote", url.Values{"name": {"A"}}); w.Code != 303 {
+		t.Fatalf("vote before deadline: %d", w.Code)
+	}
+	today = func() string { return "2026-11-21" }
+	if w := c.do("POST", "/p/"+id+"/vote", url.Values{"name": {"B"}}); w.Code != 422 {
+		t.Fatalf("vote after deadline: %d", w.Code)
+	}
+	if b := c.do("GET", "/p/"+id+"?lang=de", nil).Body.String(); !strings.Contains(b, "geschlossen") || strings.Contains(b, `<tr class="new">`) {
+		t.Fatal("expired poll should be closed")
 	}
 }

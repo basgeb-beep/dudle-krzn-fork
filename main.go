@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+	_ "time/tzdata" // time zones without system tzdata (distroless image)
 )
 
 func env(key, def string) string {

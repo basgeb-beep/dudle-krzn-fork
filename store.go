@@ -49,7 +49,19 @@ type Poll struct {
 
 	// Duration of each time option in minutes; 0 = not specified, 1440 = all day.
 	Duration int
+	// FinalOption is the option the organiser fixed (0 = none yet).
+	FinalOption int64
+	// Deadline is the last day for answers (YYYY-MM-DD, "" = none);
+	// Expired is set when it has passed.
+	Deadline string
+	Expired  bool
 }
+
+// IsClosed reports whether answers can no longer be changed.
+func (p Poll) IsClosed() bool { return p.Closed || p.Expired }
+
+// today is the current date in the server's time zone (a variable for tests).
+var today = func() string { return time.Now().Format("2006-01-02") }
 
 type Option struct {
 	ID    int64
@@ -94,7 +106,9 @@ CREATE TABLE IF NOT EXISTS polls (
 	updated_at  INTEGER NOT NULL,
 	pw_participant TEXT NOT NULL DEFAULT '',
 	pw_admin       TEXT NOT NULL DEFAULT '',
-	duration       INTEGER NOT NULL DEFAULT 0
+	duration       INTEGER NOT NULL DEFAULT 0,
+	final_option   INTEGER NOT NULL DEFAULT 0,
+	deadline       TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS meta (
 	key   TEXT PRIMARY KEY,
@@ -148,7 +162,7 @@ func OpenStore(path string) (*Store, error) {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	// Databases created before access control existed lack the password columns.
-	for _, spec := range []string{"polls pw_participant TEXT", "polls pw_admin TEXT", "polls duration INTEGER", "participants token TEXT"} {
+	for _, spec := range []string{"polls pw_participant TEXT", "polls pw_admin TEXT", "polls duration INTEGER", "participants token TEXT", "polls final_option INTEGER", "polls deadline TEXT"} {
 		parts := strings.Fields(spec)
 		table, col, typ := parts[0], parts[1], parts[2]
 		var n int
@@ -235,9 +249,9 @@ func (s *Store) CreatePoll(p *Poll, labels []string) error {
 		return err
 	}
 	defer tx.Rollback()
-	_, err = tx.Exec(`INSERT INTO polls (id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,duration)
-		VALUES (?,?,?,?,?,?,?,?,?,?)`,
-		p.ID, p.Title, p.Description, p.Kind, p.AdminToken, b2i(p.Closed), b2i(p.AllowMaybe), now.Unix(), now.Unix(), p.Duration)
+	_, err = tx.Exec(`INSERT INTO polls (id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,duration,deadline)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+		p.ID, p.Title, p.Description, p.Kind, p.AdminToken, b2i(p.Closed), b2i(p.AllowMaybe), now.Unix(), now.Unix(), p.Duration, p.Deadline)
 	if err != nil {
 		return err
 	}
@@ -253,9 +267,9 @@ func (s *Store) GetPoll(id string) (*Poll, error) {
 	var p Poll
 	var closed, maybe int
 	var created, updated int64
-	err := s.db.QueryRow(`SELECT id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,pw_participant,pw_admin,duration
+	err := s.db.QueryRow(`SELECT id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,pw_participant,pw_admin,duration,final_option,deadline
 		FROM polls WHERE id=?`, id).
-		Scan(&p.ID, &p.Title, &p.Description, &p.Kind, &p.AdminToken, &closed, &maybe, &created, &updated, &p.PwParticipant, &p.PwAdmin, &p.Duration)
+		Scan(&p.ID, &p.Title, &p.Description, &p.Kind, &p.AdminToken, &closed, &maybe, &created, &updated, &p.PwParticipant, &p.PwAdmin, &p.Duration, &p.FinalOption, &p.Deadline)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -263,6 +277,7 @@ func (s *Store) GetPoll(id string) (*Poll, error) {
 		return nil, err
 	}
 	p.Closed, p.AllowMaybe = closed != 0, maybe != 0
+	p.Expired = p.Deadline != "" && today() > p.Deadline
 	p.CreatedAt, p.UpdatedAt = time.Unix(created, 0), time.Unix(updated, 0)
 	return &p, nil
 }
@@ -516,6 +531,9 @@ func (s *Store) DeleteOption(pollID string, id int64) error {
 	if err := touch(tx, pollID); err != nil {
 		return err
 	}
+	if _, err := tx.Exec(`UPDATE polls SET final_option=0 WHERE id=? AND final_option=?`, pollID, id); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
@@ -545,9 +563,9 @@ func (s *Store) AddOptions(pollID string, labels []string) error {
 	return tx.Commit()
 }
 
-func (s *Store) UpdateSettings(pollID, title, description string, allowMaybe, closed bool, duration int) error {
-	res, err := s.db.Exec(`UPDATE polls SET title=?, description=?, allow_maybe=?, closed=?, duration=?, updated_at=? WHERE id=?`,
-		title, description, b2i(allowMaybe), b2i(closed), duration, time.Now().Unix(), pollID)
+func (s *Store) UpdateSettings(pollID, title, description string, allowMaybe, closed bool, duration int, deadline string) error {
+	res, err := s.db.Exec(`UPDATE polls SET title=?, description=?, allow_maybe=?, closed=?, duration=?, deadline=?, updated_at=? WHERE id=?`,
+		title, description, b2i(allowMaybe), b2i(closed), duration, deadline, time.Now().Unix(), pollID)
 	if err != nil {
 		return err
 	}
@@ -569,4 +587,22 @@ func (s *Store) DeleteInactive(before time.Time) (int64, error) {
 		return 0, err
 	}
 	return res.RowsAffected()
+}
+
+// SetFinal fixes an option of the poll as the chosen one and closes the poll;
+// optID 0 removes the fixed option again (the poll stays closed).
+func (s *Store) SetFinal(pollID string, optID int64) error {
+	if optID == 0 {
+		_, err := s.db.Exec(`UPDATE polls SET final_option=0, updated_at=? WHERE id=?`, time.Now().Unix(), pollID)
+		return err
+	}
+	res, err := s.db.Exec(`UPDATE polls SET final_option=?, closed=1, updated_at=? WHERE id=?
+		AND EXISTS (SELECT 1 FROM options WHERE id=? AND poll_id=?)`, optID, time.Now().Unix(), pollID, optID, pollID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

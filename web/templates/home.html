@@ -45,6 +45,10 @@
       <input type="checkbox" name="allow_maybe" value="1"{{if .Draft.AllowMaybe}} checked{{end}}>
       <span>{{.T "f_maybe"}}</span>
     </label>
+    <div class="field">
+      <label for="deadline">{{.T "deadline_label"}}</label>
+      <input id="deadline" name="deadline" type="date" value="{{.Draft.Deadline}}">
+    </div>
   </details>
 
   <div data-step="finish"><button class="btn primary" type="submit">{{.T "create"}}</button></div>

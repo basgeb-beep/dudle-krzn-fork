@@ -148,6 +148,7 @@ type OptionView struct {
 	Maybe   int
 	No      int
 	Best    bool
+	Final   bool
 }
 
 type MonthGroup struct {
@@ -302,4 +303,15 @@ func timeRange(start string, duration int) string {
 		return start
 	}
 	return start + "–" + t.Add(time.Duration(duration)*time.Minute).Format("15:04")
+}
+
+// validDeadline accepts "" (no deadline) or a date from today on.
+func validDeadline(d string) bool {
+	if d == "" {
+		return true
+	}
+	if _, err := time.Parse("2006-01-02", d); err != nil {
+		return false
+	}
+	return d >= today()
 }

@@ -162,6 +162,7 @@ type Draft struct {
 	DatesInit   string
 	AllowMaybe  bool
 	Duration    int
+	Deadline    string
 }
 
 type View struct {
@@ -194,6 +195,9 @@ type View struct {
 	ImprintURL   string
 	PrivacyURL   string
 	DurationText string
+	Final        *OptionView // the option the organiser fixed
+	FinalICS     bool        // a calendar file can be offered
+	DeadlineText string
 	DurOpts      []DurOpt
 	DurCustom    int
 	DeleteID     int64
@@ -323,6 +327,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /p/{id}/comment", s.comment)
 	mux.HandleFunc("GET /p/{id}/feed.atom", s.feed)
 	mux.HandleFunc("GET /p/{id}/export.csv", s.export)
+	mux.HandleFunc("GET /p/{id}/event.ics", s.ics)
 	mux.HandleFunc("GET /p/{id}/admin/{token}", s.admin)
 	mux.HandleFunc("POST /p/{id}/admin/{token}/{action}", s.adminAction)
 	mux.HandleFunc("/", s.notFound)
@@ -400,6 +405,7 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 			d.Duration = n
 		}
 	}
+	d.Deadline = strings.TrimSpace(r.FormValue("deadline"))
 	v.Draft = d
 	v.setDurationOptions(d.Duration)
 
@@ -408,6 +414,8 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case durErr:
 			msg = "err_duration"
+		case !validDeadline(d.Deadline):
+			msg = "err_deadline"
 		case d.Title == "" || tooLong(d.Title, maxTitle):
 			msg = "err_title"
 		case tooLong(d.Description, maxDescription):
@@ -422,7 +430,7 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p := &Poll{ID: randID(10), AdminToken: randID(26), Title: d.Title, Description: d.Description,
-		Kind: d.Kind, AllowMaybe: d.AllowMaybe, Duration: d.Duration}
+		Kind: d.Kind, AllowMaybe: d.AllowMaybe, Duration: d.Duration, Deadline: d.Deadline}
 	if err := s.store.CreatePoll(p, labels); err != nil {
 		s.serverError(w, r, err)
 		return
@@ -510,6 +518,16 @@ func (s *Server) pollView(r *http.Request, d *PollData) *View {
 	}
 	v.PollURL = s.absURL(r, "/p/"+d.Poll.ID)
 	v.DurationText = v.durationText(d.Poll.Duration)
+	for i := range v.Opts {
+		if v.Opts[i].ID == d.Poll.FinalOption {
+			v.Opts[i].Final = true
+			v.Final = &v.Opts[i]
+			v.FinalICS = v.Opts[i].IsDate
+		}
+	}
+	if d.Poll.Deadline != "" {
+		v.DeadlineText = viewOption(KindDate, Option{Label: d.Poll.Deadline}, v.Lang, 0).Full
+	}
 	return v
 }
 
@@ -519,7 +537,7 @@ func (s *Server) poll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := s.pollView(r, d)
-	if id, _ := strconv.ParseInt(r.URL.Query().Get("edit"), 10, 64); id > 0 && !d.Poll.Closed {
+	if id, _ := strconv.ParseInt(r.URL.Query().Get("edit"), 10, 64); id > 0 && !d.Poll.IsClosed() {
 		for i := range v.Rows {
 			if v.Rows[i].ID == id && v.Rows[i].CanEdit {
 				v.Rows[i].Editing = true
@@ -527,7 +545,7 @@ func (s *Server) poll(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if id, _ := strconv.ParseInt(r.URL.Query().Get("delete"), 10, 64); id > 0 && !d.Poll.Closed {
+	if id, _ := strconv.ParseInt(r.URL.Query().Get("delete"), 10, 64); id > 0 && !d.Poll.IsClosed() {
 		for _, row := range v.Rows {
 			if row.ID == id && row.CanEdit {
 				v.DeleteID, v.DeleteName = id, row.Name
@@ -547,7 +565,7 @@ func (s *Server) deleteParticipant(w http.ResponseWriter, r *http.Request) {
 	if d == nil {
 		return
 	}
-	if d.Poll.Closed {
+	if d.Poll.IsClosed() {
 		s.fail(w, r, http.StatusForbidden, "err_generic", "err_closed")
 		return
 	}
@@ -596,7 +614,7 @@ func (s *Server) vote(w http.ResponseWriter, r *http.Request) {
 	}
 	var msg string
 	switch {
-	case d.Poll.Closed:
+	case d.Poll.IsClosed():
 		msg = "err_closed"
 	case name == "" || tooLong(name, maxName):
 		msg = "err_name"
@@ -826,7 +844,15 @@ func (s *Server) adminAction(w http.ResponseWriter, r *http.Request) {
 				msg = "err_duration"
 				break
 			}
-			err = s.store.UpdateSettings(id, title, desc, r.FormValue("allow_maybe") == "1", r.FormValue("closed") == "1", dur)
+			deadline := strings.TrimSpace(r.FormValue("deadline"))
+			if deadline != d.Poll.Deadline && !validDeadline(deadline) {
+				msg = "err_deadline"
+				break
+			}
+			if d.Poll.Kind != KindDate {
+				dur = 0
+			}
+			err = s.store.UpdateSettings(id, title, desc, r.FormValue("allow_maybe") == "1", r.FormValue("closed") == "1", dur, deadline)
 		}
 	case "add_options":
 		var labels []string
@@ -845,6 +871,12 @@ func (s *Server) adminAction(w http.ResponseWriter, r *http.Request) {
 		}
 	case "delete_participant":
 		err = s.store.DeleteParticipant(id, num("participant"))
+	case "finalize":
+		if err = s.store.SetFinal(id, num("option")); errors.Is(err, ErrNotFound) {
+			err, msg = nil, "err_generic"
+		}
+	case "unfinalize":
+		err = s.store.SetFinal(id, 0)
 	case "invite":
 		var names []string
 		seen := map[string]bool{}

@@ -35,9 +35,32 @@
   </div>
   {{if eq .Poll.Kind "date"}}{{template "durationfield" .}}{{end}}
   <label class="check"><input type="checkbox" name="allow_maybe" value="1"{{if .Poll.AllowMaybe}} checked{{end}}><span>{{.T "f_maybe"}}</span></label>
+  <div class="field">
+    <label for="deadline">{{.T "deadline_label"}}</label>
+    <input id="deadline" name="deadline" type="date" value="{{.Poll.Deadline}}">
+  </div>
   <label class="check"><input type="checkbox" name="closed" value="1"{{if .Poll.Closed}} checked{{end}}><span>{{.T "close_poll"}}</span></label>
   <button class="btn primary" type="submit">{{.T "save"}}</button>
 </form>
+
+<section class="card" id="finalize">
+  <h2>{{.T "finalize_h"}}</h2>
+  {{if .Final}}
+  <p><strong>{{.T "final_title"}}:</strong> {{.Final.Full}}</p>
+  <form method="post" action="/p/{{.Poll.ID}}/admin/{{.Poll.AdminToken}}/unfinalize">
+    <button class="btn" type="submit">{{.T "unfinalize_btn"}}</button>
+  </form>
+  {{else}}
+  <p class="hint">{{.T "finalize_hint"}}</p>
+  <form method="post" action="/p/{{.Poll.ID}}/admin/{{.Poll.AdminToken}}/finalize">
+    <fieldset class="finalpick">
+      <legend class="sr">{{.T "finalize_h"}}</legend>
+      {{range .Opts}}<label class="check"><input type="radio" name="option" value="{{.ID}}" required{{if .Best}} checked{{end}}><span>{{.Full}} <small class="muted">({{.Yes}}{{if .Maybe}} + {{.Maybe}}{{end}})</small>{{if .Best}} ★{{end}}</span></label>{{end}}
+    </fieldset>
+    <button class="btn primary" type="submit">{{.T "finalize_btn"}}</button>
+  </form>
+  {{end}}
+</section>
 
 <section class="card">
   <h2>{{.T "options"}}</h2>
