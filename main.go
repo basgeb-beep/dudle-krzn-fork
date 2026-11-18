@@ -29,6 +29,7 @@ func main() {
 	rateDef, _ := strconv.Atoi(env("DUDLE_RATE_LIMIT", "60"))
 	rate := flag.Int("rate-limit", rateDef, "max write requests (POST) per client per minute, 0 = off (env DUDLE_RATE_LIMIT)")
 	trustProxy := flag.Bool("trust-proxy", env("DUDLE_TRUST_PROXY", "") == "1", "identify clients by X-Forwarded-For; only behind a reverse proxy (env DUDLE_TRUST_PROXY=1)")
+	basePath := flag.String("base-path", env("DUDLE_BASE_PATH", ""), "serve under this URL path prefix, e.g. /dudle (env DUDLE_BASE_PATH)")
 	flag.Parse()
 
 	store, err := OpenStore(*dbPath)
@@ -42,6 +43,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	srv.SetBasePath(*basePath)
 	srv.SetRateLimit(*rate, *trustProxy)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

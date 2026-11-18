@@ -108,7 +108,7 @@ func (s *Server) setUnlock(w http.ResponseWriter, r *http.Request, p *Poll, role
 	secure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 	http.SetCookie(w, &http.Cookie{
 		Name: cookieName(role, p.ID), Value: s.sign(role, p.ID, h),
-		Path: "/p/" + p.ID, MaxAge: 30 * 24 * 3600,
+		Path: s.basePath + "/p/" + p.ID, MaxAge: 30 * 24 * 3600,
 		HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode,
 	})
 }

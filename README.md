@@ -27,6 +27,7 @@ Configuration (flag or environment variable):
 | `-db` | `DUDLE_DB` | `dudle.db` | SQLite file |
 | `-base-url` | `DUDLE_BASE_URL` | derived from request | public URL for share links/feeds |
 | `-expire-days` | `DUDLE_EXPIRE_DAYS` | `365` | delete polls inactive this long, `0` = never |
+| `-base-path` | `DUDLE_BASE_PATH` | none | serve under a URL prefix such as `/dudle`; the reverse proxy forwards the path unchanged. If you set `-base-url`, include the prefix there |
 | `-rate-limit` | `DUDLE_RATE_LIMIT` | `60` | max write requests (POST) per client per minute, `0` = off |
 | `-trust-proxy` | `DUDLE_TRUST_PROXY=1` | off | identify clients by `X-Forwarded-For`; only enable behind a reverse proxy that sets it |
 

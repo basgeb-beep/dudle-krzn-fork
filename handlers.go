@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/csv"
@@ -28,6 +29,7 @@ type Server struct {
 	pages   map[string]*template.Template
 	baseURL string // optional fixed public base URL
 
+	basePath      string   // optional URL path prefix, e.g. "/dudle"
 	secret        []byte   // signs unlock cookies
 	unlockLimiter *limiter // brute-force protection for password forms
 	limiter       *limiter // nil = no rate limiting
@@ -202,12 +204,14 @@ func (s *Server) render(w http.ResponseWriter, page string, v *View) {
 		http.Error(w, "internal error", 500)
 		return
 	}
+	var buf bytes.Buffer
+	if err := t.ExecuteTemplate(&buf, "layout", v); err != nil {
+		log.Printf("render %s: %v", page, err)
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(v.Status)
-	if err := t.ExecuteTemplate(w, "layout", v); err != nil {
-		log.Printf("render %s: %v", page, err)
-	}
+	w.Write(s.prefixHTML(buf.Bytes()))
 }
 
 func (s *Server) fail(w http.ResponseWriter, r *http.Request, status int, titleKey, msgKey string) {
@@ -238,7 +242,7 @@ func (s *Server) absURL(r *http.Request, path string) string {
 	if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
 		scheme = "https"
 	}
-	return scheme + "://" + r.Host + path
+	return scheme + "://" + r.Host + s.basePath + path
 }
 
 // ---------------------------------------------------------------- routing
@@ -261,7 +265,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /p/{id}/admin/{token}", s.admin)
 	mux.HandleFunc("POST /p/{id}/admin/{token}/{action}", s.adminAction)
 	mux.HandleFunc("/", s.notFound)
-	return s.middleware(s.rateLimit(mux))
+	return s.withBasePath(s.middleware(s.rateLimit(mux)))
 }
 
 func cacheStatic(h http.Handler) http.Handler {
@@ -289,7 +293,7 @@ func (s *Server) middleware(next http.Handler) http.Handler {
 
 		lang := detectLang(r)
 		if q := r.URL.Query().Get("lang"); isSupported(q) {
-			http.SetCookie(w, &http.Cookie{Name: "lang", Value: q, Path: "/", MaxAge: 365 * 24 * 3600,
+			http.SetCookie(w, &http.Cookie{Name: "lang", Value: q, Path: s.basePath + "/", MaxAge: 365 * 24 * 3600,
 				SameSite: http.SameSiteLaxMode, HttpOnly: true, Secure: r.TLS != nil})
 		}
 		r = r.WithContext(context.WithValue(r.Context(), langKey, lang))
