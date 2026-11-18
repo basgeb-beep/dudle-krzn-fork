@@ -45,6 +45,14 @@
       <input type="checkbox" name="allow_maybe" value="1"{{if .Draft.AllowMaybe}} checked{{end}}>
       <span>{{.T "f_maybe"}}</span>
     </label>
+    <label class="check">
+      <input type="checkbox" name="hide_results" value="1"{{if .Draft.HideResults}} checked{{end}}>
+      <span>{{.T "hide_results"}}</span>
+    </label>
+    <div class="field">
+      <label for="max_per_option">{{.T "max_label"}}</label>
+      <input id="max_per_option" name="max_per_option" type="number" inputmode="numeric" min="1" max="9999" step="1" value="{{if .Draft.MaxPer}}{{.Draft.MaxPer}}{{end}}">
+    </div>
     <div class="field">
       <label for="deadline">{{.T "deadline_label"}}</label>
       <input id="deadline" name="deadline" type="date" value="{{.Draft.Deadline}}">

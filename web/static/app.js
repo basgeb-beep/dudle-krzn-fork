@@ -22,13 +22,47 @@
       btn.setAttribute('aria-label', (sel.dataset.label ? sel.dataset.label + ': ' : '') + opt.textContent);
     };
     btn.addEventListener('click', () => {
-      sel.selectedIndex = (sel.selectedIndex + 1) % sel.options.length;
+      let i = sel.selectedIndex;
+      do { i = (i + 1) % sel.options.length; } while (sel.options[i].disabled && i !== sel.selectedIndex);
+      sel.selectedIndex = i;
       render();
     });
     sel.hidden = true; // stays in the form, so its value is still submitted
     sel.after(btn);
     render();
   });
+
+  // ---- small screens: answer as a list instead of a wide table row ---------------
+  const voteRow = document.querySelector('#vote tr.new, #vote tr.editing');
+  if (voteRow) {
+    const wrap = document.querySelector('#vote .tablewrap');
+    const list = el('ul', { className: 'vote-list' });
+    list.setAttribute('aria-label', document.querySelector('#vote').dataset.youranswer || '');
+    const moved = []; // [node, original parent]
+    const toList = () => {
+      const nameCell = voteRow.querySelector('td.name');
+      const nameLi = el('li', { className: 'vl-name' });
+      [...nameCell.childNodes].forEach((n) => { moved.push([n, nameCell]); nameLi.append(n); });
+      list.append(nameLi);
+      voteRow.querySelectorAll('td.cell').forEach((td) => {
+        const sel = td.querySelector('select.vote');
+        const li = el('li', {}, el('span', { className: 'vl-label', textContent: sel ? sel.dataset.label : '' }));
+        [...td.childNodes].forEach((n) => { moved.push([n, td]); li.append(n); });
+        list.append(li);
+      });
+      wrap.before(list);
+      voteRow.hidden = true;
+    };
+    const toTable = () => {
+      moved.splice(0).forEach(([n, parent]) => parent.append(n));
+      list.replaceChildren(); list.remove();
+      voteRow.hidden = false;
+    };
+    const mq = window.matchMedia('(max-width: 640px)');
+    const apply = () => { if (mq.matches && !list.isConnected) toList(); else if (!mq.matches && list.isConnected) toTable(); };
+    mq.addEventListener('change', apply);
+    apply();
+  }
 
   // ---- date picker -----------------------------------------------------------
   document.querySelectorAll('.datepicker').forEach((dp) => {

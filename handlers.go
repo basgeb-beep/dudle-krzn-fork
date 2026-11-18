@@ -54,6 +54,7 @@ type VoteSel struct {
 	V     *View
 	Cell  Cell
 	Label string
+	Full  bool // "yes" is not available any more
 }
 
 // DPData is the data for the date picker partial.
@@ -109,9 +110,11 @@ type PwForm struct {
 }
 
 var templateFuncs = template.FuncMap{
-	"tag":    func(l string) string { return strings.ReplaceAll(l, "_", "-") },
-	"pw":     func(v *View, role, hash string) PwForm { return PwForm{V: v, Role: role, Active: hash != ""} },
-	"dict":   func(v *View, c Cell, label string) VoteSel { return VoteSel{V: v, Cell: c, Label: label} },
+	"tag": func(l string) string { return strings.ReplaceAll(l, "_", "-") },
+	"pw":  func(v *View, role, hash string) PwForm { return PwForm{V: v, Role: role, Active: hash != ""} },
+	"dict": func(v *View, c Cell, o OptionView) VoteSel {
+		return VoteSel{V: v, Cell: c, Label: o.Full, Full: o.IsFull && c.Value != VoteYes}
+	},
 	"dpData": func(v *View, init string) DPData { return DPData{V: v, Init: init, Rows: []int{0, 1, 2, 3}} },
 }
 
@@ -163,6 +166,8 @@ type Draft struct {
 	AllowMaybe  bool
 	Duration    int
 	Deadline    string
+	HideResults bool
+	MaxPer      int
 }
 
 type View struct {
@@ -198,6 +203,7 @@ type View struct {
 	Final        *OptionView // the option the organiser fixed
 	FinalICS     bool        // a calendar file can be offered
 	DeadlineText string
+	Hidden       bool // results are hidden from this viewer
 	DurOpts      []DurOpt
 	DurCustom    int
 	DeleteID     int64
@@ -406,6 +412,9 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	d.Deadline = strings.TrimSpace(r.FormValue("deadline"))
+	d.HideResults = r.FormValue("hide_results") == "1"
+	maxPer, maxErr := parseMaxPer(r.FormValue("max_per_option"))
+	d.MaxPer = maxPer
 	v.Draft = d
 	v.setDurationOptions(d.Duration)
 
@@ -416,6 +425,8 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 			msg = "err_duration"
 		case !validDeadline(d.Deadline):
 			msg = "err_deadline"
+		case maxErr != nil:
+			msg = "err_max"
 		case d.Title == "" || tooLong(d.Title, maxTitle):
 			msg = "err_title"
 		case tooLong(d.Description, maxDescription):
@@ -430,7 +441,8 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p := &Poll{ID: randID(10), AdminToken: randID(26), Title: d.Title, Description: d.Description,
-		Kind: d.Kind, AllowMaybe: d.AllowMaybe, Duration: d.Duration, Deadline: d.Deadline}
+		Kind: d.Kind, AllowMaybe: d.AllowMaybe, Duration: d.Duration, Deadline: d.Deadline,
+		HideResults: d.HideResults, MaxPerOption: d.MaxPer}
 	if err := s.store.CreatePoll(p, labels); err != nil {
 		s.serverError(w, r, err)
 		return
@@ -502,7 +514,18 @@ func (s *Server) pollView(r *http.Request, d *PollData) *View {
 	sum := Summarize(d, v.Lang)
 	v.Opts, v.Groups, v.Best = sum.Options, sum.Groups, sum.Best
 	v.NumVoters = len(d.Participants)
+	v.Hidden = d.Poll.HideResults && !s.isManager(r, &d.Poll)
+	if v.Hidden {
+		v.Best = nil
+		v.NumVoters = 0
+	}
 	for _, p := range d.Participants {
+		if v.Hidden && !s.owns(r, &d.Poll, p) && !(p.Token == "" && len(p.Votes) == 0) {
+			continue
+		}
+		if v.Hidden {
+			v.NumVoters++
+		}
 		row := Row{ID: p.ID, Name: p.Name, CanEdit: s.canEdit(r, &d.Poll, p)}
 		for _, o := range d.Options {
 			row.Cells = append(row.Cells, Cell{OptID: o.ID, Value: p.Votes[o.ID]})
@@ -519,6 +542,10 @@ func (s *Server) pollView(r *http.Request, d *PollData) *View {
 	v.PollURL = s.absURL(r, "/p/"+d.Poll.ID)
 	v.DurationText = v.durationText(d.Poll.Duration)
 	for i := range v.Opts {
+		if m := d.Poll.MaxPerOption; m > 0 {
+			v.Opts[i].Seats = fmt.Sprintf("%d/%d", v.Opts[i].Yes, m)
+			v.Opts[i].IsFull = v.Opts[i].Yes >= m
+		}
 		if v.Opts[i].ID == d.Poll.FinalOption {
 			v.Opts[i].Final = true
 			v.Final = &v.Opts[i]
@@ -602,6 +629,7 @@ func (s *Server) vote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := randID(24)
+	var fullLabel string
 	if pid > 0 {
 		pt := d.participant(pid)
 		if pt == nil || !s.canEdit(r, &d.Poll, *pt) {
@@ -627,6 +655,15 @@ func (s *Server) vote(w http.ResponseWriter, r *http.Request) {
 			}
 			http.Redirect(w, r, "/p/"+d.Poll.ID+"#participants", http.StatusSeeOther)
 			return
+		case errors.As(err, new(ErrFull)):
+			var full ErrFull
+			errors.As(err, &full)
+			msg = "err_full"
+			for _, o := range d.Options {
+				if o.ID == full.OptionID {
+					fullLabel = viewOption(d.Poll.Kind, o, langOf(r), d.Poll.Duration).Full
+				}
+			}
 		case errors.Is(err, ErrNameTaken):
 			msg = "err_name_taken"
 		case errors.Is(err, ErrClosed):
@@ -644,6 +681,9 @@ func (s *Server) vote(w http.ResponseWriter, r *http.Request) {
 	v := s.pollView(r, d)
 	v.Status = http.StatusUnprocessableEntity
 	v.Error = v.T(msg)
+	if msg == "err_full" {
+		v.Error = v.T(msg, fullLabel)
+	}
 	cells := make([]Cell, 0, len(d.Options))
 	for _, o := range d.Options {
 		cells = append(cells, Cell{OptID: o.ID, Value: votes[o.ID]})
@@ -714,6 +754,10 @@ func (s *Server) feed(w http.ResponseWriter, r *http.Request) {
 	if d == nil {
 		return
 	}
+	if d.Poll.HideResults && !s.isManager(r, &d.Poll) {
+		s.notFound(w, r)
+		return
+	}
 	lang := langOf(r)
 	pollURL := s.absURL(r, "/p/"+d.Poll.ID)
 	f := atomFeed{
@@ -756,6 +800,10 @@ func csvSafe(s string) string {
 func (s *Server) export(w http.ResponseWriter, r *http.Request) {
 	d := s.loadPoll(w, r)
 	if d == nil {
+		return
+	}
+	if d.Poll.HideResults && !s.isManager(r, &d.Poll) {
+		s.notFound(w, r)
 		return
 	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
@@ -852,7 +900,14 @@ func (s *Server) adminAction(w http.ResponseWriter, r *http.Request) {
 			if d.Poll.Kind != KindDate {
 				dur = 0
 			}
-			err = s.store.UpdateSettings(id, title, desc, r.FormValue("allow_maybe") == "1", r.FormValue("closed") == "1", dur, deadline)
+			maxPer, merr := parseMaxPer(r.FormValue("max_per_option"))
+			if merr != nil {
+				msg = "err_max"
+				break
+			}
+			err = s.store.UpdateSettings(id, Settings{Title: title, Description: desc, Deadline: deadline,
+				AllowMaybe: r.FormValue("allow_maybe") == "1", Closed: r.FormValue("closed") == "1",
+				HideResults: r.FormValue("hide_results") == "1", Duration: dur, MaxPerOption: maxPer})
 		}
 	case "add_options":
 		var labels []string

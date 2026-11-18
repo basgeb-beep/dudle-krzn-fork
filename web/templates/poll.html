@@ -1,6 +1,6 @@
 {{define "voteselect"}}<select class="vote" name="o_{{.Cell.OptID}}" data-label="{{.Label}}">
   <option value="0"{{if eq .Cell.Value 0}} selected{{end}}>{{.V.T "v_no"}}</option>
-  <option value="1"{{if eq .Cell.Value 1}} selected{{end}}>{{.V.T "v_yes"}}</option>
+  <option value="1"{{if eq .Cell.Value 1}} selected{{end}}{{if .Full}} disabled{{end}}>{{.V.T "v_yes"}}</option>
   {{if .V.Poll.AllowMaybe}}<option value="2"{{if eq .Cell.Value 2}} selected{{end}}>{{.V.T "v_maybe"}}</option>{{end}}
 </select>{{end}}
 
@@ -15,6 +15,7 @@
 </article>
 
 {{if .Error}}<div class="alert error" role="alert">{{.Error}}</div>{{end}}
+{{if .Hidden}}<div class="alert info">{{.T "hidden_note"}}</div>{{end}}
 {{if .Poll.IsClosed}}<div class="alert info">{{.T "closed_note"}}</div>{{else if .DeadlineText}}<div class="alert info">{{.T "deadline_note" .DeadlineText}}</div>{{end}}
 
 {{if .Final}}
@@ -43,7 +44,7 @@
 </section>
 {{end}}
 
-<form id="vote" method="post" action="/p/{{.Poll.ID}}/vote" class="card votes-card">
+<form id="vote" method="post" action="/p/{{.Poll.ID}}/vote" class="card votes-card" data-youranswer="{{.T "your_answer"}}">
   <div class="tablewrap" id="participants">
     <table class="votes">
       <thead>
@@ -54,6 +55,7 @@
           <th scope="col" class="opt{{if .Best}} best{{end}}{{if .Final}} final{{end}}">
             {{if .IsDate}}<span class="wd">{{.Weekday}}</span><span class="day">{{.Day}}</span>{{if .Time}}<span class="tm">{{.Time}}</span>{{end}}
             {{else}}<span class="lbl">{{.Label}}</span>{{end}}
+            {{if .Seats}}<span class="seats{{if .IsFull}} full{{end}}">{{$.T "seats" .Seats}}{{if .IsFull}} · {{$.T "full_badge"}}{{end}}</span>{{end}}
           </th>
           {{end}}
         </tr>
@@ -66,7 +68,7 @@
             <input type="hidden" name="pid" value="{{.ID}}">
             <input type="text" name="name" value="{{.Name}}" maxlength="60" required aria-label="{{$.T "your_name"}}" autofocus autocomplete="name">
           </td>
-          {{range $i, $c := .Cells}}<td class="cell">{{template "voteselect" (dict $ $c (index $.Opts $i).Full)}}</td>{{end}}
+          {{range $i, $c := .Cells}}<td class="cell">{{template "voteselect" (dict $ $c (index $.Opts $i))}}</td>{{end}}
         </tr>
         {{else}}
         <tr>
@@ -83,16 +85,16 @@
         {{if and (not .Poll.IsClosed) (eq .EditID 0)}}
         <tr class="new">
           <td class="name"><input type="text" name="name" value="{{.NewName}}" maxlength="60" required placeholder="{{.T "your_name"}}" aria-label="{{.T "your_name"}}" autocomplete="name"></td>
-          {{range $i, $c := .NewRow}}<td class="cell">{{template "voteselect" (dict $ $c (index $.Opts $i).Full)}}</td>{{end}}
+          {{range $i, $c := .NewRow}}<td class="cell">{{template "voteselect" (dict $ $c (index $.Opts $i))}}</td>{{end}}
         </tr>
         {{end}}
       </tbody>
-      <tfoot>
+      {{if not .Hidden}}<tfoot>
         <tr>
           <th class="name" scope="row">{{.T "total"}}</th>
           {{range .Opts}}<td class="sum{{if .Best}} best{{end}}"><strong>{{.Yes}}</strong>{{if .Maybe}}<small>+{{.Maybe}}</small>{{end}}</td>{{end}}
         </tr>
-      </tfoot>
+      </tfoot>{{end}}
     </table>
   </div>
   {{if not .Poll.IsClosed}}
@@ -110,10 +112,10 @@
     <input id="pollurl" type="text" readonly value="{{.PollURL}}" aria-label="{{.T "share"}}">
     <button type="button" class="btn" data-copy="#pollurl" data-copied="{{.T "copied"}}">{{.T "copy"}}</button>
   </div>
-  <p class="links">
+  {{if not .Hidden}}<p class="links">
     <a href="/p/{{.Poll.ID}}/export.csv">{{.T "export_csv"}}</a>
     <a href="/p/{{.Poll.ID}}/feed.atom">{{.T "feed"}}</a>
-  </p>
+  </p>{{end}}
 </section>
 
 <section class="card comments" id="comments">

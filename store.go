@@ -55,7 +55,16 @@ type Poll struct {
 	// Expired is set when it has passed.
 	Deadline string
 	Expired  bool
+	// HideResults shows participants only their own entry; the organiser sees all.
+	HideResults bool
+	// MaxPerOption limits the "yes" answers per option (0 = unlimited).
+	MaxPerOption int
 }
+
+// ErrFull is returned when an option has no free place left.
+type ErrFull struct{ OptionID int64 }
+
+func (e ErrFull) Error() string { return "option full" }
 
 // IsClosed reports whether answers can no longer be changed.
 func (p Poll) IsClosed() bool { return p.Closed || p.Expired }
@@ -108,7 +117,9 @@ CREATE TABLE IF NOT EXISTS polls (
 	pw_admin       TEXT NOT NULL DEFAULT '',
 	duration       INTEGER NOT NULL DEFAULT 0,
 	final_option   INTEGER NOT NULL DEFAULT 0,
-	deadline       TEXT NOT NULL DEFAULT ''
+	deadline       TEXT NOT NULL DEFAULT '',
+	hide_results   INTEGER NOT NULL DEFAULT 0,
+	max_per_option INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS meta (
 	key   TEXT PRIMARY KEY,
@@ -162,7 +173,7 @@ func OpenStore(path string) (*Store, error) {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	// Databases created before access control existed lack the password columns.
-	for _, spec := range []string{"polls pw_participant TEXT", "polls pw_admin TEXT", "polls duration INTEGER", "participants token TEXT", "polls final_option INTEGER", "polls deadline TEXT"} {
+	for _, spec := range []string{"polls pw_participant TEXT", "polls pw_admin TEXT", "polls duration INTEGER", "participants token TEXT", "polls final_option INTEGER", "polls deadline TEXT", "polls hide_results INTEGER", "polls max_per_option INTEGER"} {
 		parts := strings.Fields(spec)
 		table, col, typ := parts[0], parts[1], parts[2]
 		var n int
@@ -249,9 +260,9 @@ func (s *Store) CreatePoll(p *Poll, labels []string) error {
 		return err
 	}
 	defer tx.Rollback()
-	_, err = tx.Exec(`INSERT INTO polls (id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,duration,deadline)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-		p.ID, p.Title, p.Description, p.Kind, p.AdminToken, b2i(p.Closed), b2i(p.AllowMaybe), now.Unix(), now.Unix(), p.Duration, p.Deadline)
+	_, err = tx.Exec(`INSERT INTO polls (id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,duration,deadline,hide_results,max_per_option)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		p.ID, p.Title, p.Description, p.Kind, p.AdminToken, b2i(p.Closed), b2i(p.AllowMaybe), now.Unix(), now.Unix(), p.Duration, p.Deadline, b2i(p.HideResults), p.MaxPerOption)
 	if err != nil {
 		return err
 	}
@@ -265,18 +276,18 @@ func (s *Store) CreatePoll(p *Poll, labels []string) error {
 
 func (s *Store) GetPoll(id string) (*Poll, error) {
 	var p Poll
-	var closed, maybe int
+	var closed, maybe, hide int
 	var created, updated int64
-	err := s.db.QueryRow(`SELECT id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,pw_participant,pw_admin,duration,final_option,deadline
+	err := s.db.QueryRow(`SELECT id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,pw_participant,pw_admin,duration,final_option,deadline,hide_results,max_per_option
 		FROM polls WHERE id=?`, id).
-		Scan(&p.ID, &p.Title, &p.Description, &p.Kind, &p.AdminToken, &closed, &maybe, &created, &updated, &p.PwParticipant, &p.PwAdmin, &p.Duration, &p.FinalOption, &p.Deadline)
+		Scan(&p.ID, &p.Title, &p.Description, &p.Kind, &p.AdminToken, &closed, &maybe, &created, &updated, &p.PwParticipant, &p.PwAdmin, &p.Duration, &p.FinalOption, &p.Deadline, &hide, &p.MaxPerOption)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	p.Closed, p.AllowMaybe = closed != 0, maybe != 0
+	p.Closed, p.AllowMaybe, p.HideResults = closed != 0, maybe != 0, hide != 0
 	p.Expired = p.Deadline != "" && today() > p.Deadline
 	p.CreatedAt, p.UpdatedAt = time.Unix(created, 0), time.Unix(updated, 0)
 	return &p, nil
@@ -393,8 +404,8 @@ func (s *Store) SaveVote(pollID string, pid int64, name string, votes map[int64]
 	}
 	defer tx.Rollback()
 
-	var closed int
-	if err := tx.QueryRow(`SELECT closed FROM polls WHERE id=?`, pollID).Scan(&closed); err != nil {
+	var closed, maxPer int
+	if err := tx.QueryRow(`SELECT closed, max_per_option FROM polls WHERE id=?`, pollID).Scan(&closed, &maxPer); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, ErrNotFound
 		}
@@ -442,6 +453,21 @@ func (s *Store) SaveVote(pollID string, pid int64, name string, votes map[int64]
 	for id, n := range existing {
 		if id != pid && strings.EqualFold(n, name) {
 			return 0, ErrNameTaken
+		}
+	}
+
+	if maxPer > 0 {
+		for oid, v := range votes {
+			if v != VoteYes || !valid[oid] {
+				continue
+			}
+			var n int
+			if err := tx.QueryRow(`SELECT COUNT(*) FROM votes WHERE option_id=? AND value=? AND participant_id<>?`, oid, VoteYes, pid).Scan(&n); err != nil {
+				return 0, err
+			}
+			if n >= maxPer {
+				return 0, ErrFull{OptionID: oid}
+			}
 		}
 	}
 
@@ -563,9 +589,18 @@ func (s *Store) AddOptions(pollID string, labels []string) error {
 	return tx.Commit()
 }
 
-func (s *Store) UpdateSettings(pollID, title, description string, allowMaybe, closed bool, duration int, deadline string) error {
-	res, err := s.db.Exec(`UPDATE polls SET title=?, description=?, allow_maybe=?, closed=?, duration=?, deadline=?, updated_at=? WHERE id=?`,
-		title, description, b2i(allowMaybe), b2i(closed), duration, deadline, time.Now().Unix(), pollID)
+// Settings are the poll options the organiser can change.
+type Settings struct {
+	Title, Description, Deadline    string
+	AllowMaybe, Closed, HideResults bool
+	Duration, MaxPerOption          int
+}
+
+func (s *Store) UpdateSettings(pollID string, st Settings) error {
+	res, err := s.db.Exec(`UPDATE polls SET title=?, description=?, allow_maybe=?, closed=?, duration=?, deadline=?,
+		hide_results=?, max_per_option=?, updated_at=? WHERE id=?`,
+		st.Title, st.Description, b2i(st.AllowMaybe), b2i(st.Closed), st.Duration, st.Deadline,
+		b2i(st.HideResults), st.MaxPerOption, time.Now().Unix(), pollID)
 	if err != nil {
 		return err
 	}

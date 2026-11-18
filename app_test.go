@@ -194,7 +194,7 @@ func TestStoreLifecycle(t *testing.T) {
 		t.Fatalf("duplicate labels must be ignored, got %d options", len(d.Options))
 	}
 
-	if err := st.UpdateSettings("abc", "New", "desc", false, true, 0, ""); err != nil {
+	if err := st.UpdateSettings("abc", Settings{Title: "New", Description: "desc", Closed: true}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.SaveVote("abc", 0, "Bob", nil, ""); !errors.Is(err, ErrClosed) {
@@ -1030,5 +1030,65 @@ func TestDeadline(t *testing.T) {
 	}
 	if b := c.do("GET", "/p/"+id+"?lang=de", nil).Body.String(); !strings.Contains(b, "geschlossen") || strings.Contains(b, `<tr class="new">`) {
 		t.Fatal("expired poll should be closed")
+	}
+}
+
+func TestPlacesPerOption(t *testing.T) {
+	c := newClient(t)
+	loc := c.do("POST", "/create", url.Values{"title": {"Kurs"}, "kind": {"text"}, "choices": {"Mo\nDi"}, "max_per_option": {"2"}}).Header().Get("Location")
+	id := strings.Split(loc, "/")[2]
+	ids := regexp.MustCompile(`name="o_(\d+)"`).FindAllStringSubmatch(c.do("GET", "/p/"+id, nil).Body.String(), -1)
+	mo := ids[0][1]
+	for _, n := range []string{"A", "B"} {
+		if w := c.do("POST", "/p/"+id+"/vote", url.Values{"name": {n}, "o_" + mo: {"1"}}); w.Code != 303 {
+			t.Fatalf("vote %s: %d", n, w.Code)
+		}
+	}
+	body := c.do("GET", "/p/"+id+"?lang=de", nil).Body.String()
+	if !strings.Contains(body, "Plätze: 2/2") || !strings.Contains(body, "voll") {
+		t.Fatal("seat count missing")
+	}
+	if !regexp.MustCompile(`<option value="1" disabled>`).MatchString(body) {
+		t.Fatal("yes should be disabled for a full option")
+	}
+	w := c.do("POST", "/p/"+id+"/vote?lang=de", url.Values{"name": {"C"}, "o_" + mo: {"1"}})
+	if w.Code != 422 || !strings.Contains(w.Body.String(), "ausgebucht") {
+		t.Fatalf("overbooking: %d", w.Code)
+	}
+	if w := c.do("POST", "/p/"+id+"/vote", url.Values{"name": {"C"}, "o_" + mo: {"2"}}); w.Code != 303 {
+		t.Fatalf("'if need be' on a full option should be allowed: %d", w.Code)
+	}
+	if w := c.do("POST", "/create", url.Values{"title": {"K"}, "kind": {"text"}, "choices": {"A"}, "max_per_option": {"0.5"}}); w.Code != 422 {
+		t.Fatalf("bad number accepted: %d", w.Code)
+	}
+}
+
+func TestHiddenResults(t *testing.T) {
+	srv, _ := NewServer(testStore(t), "")
+	h := srv.Handler()
+	org := &client{t: t, h: h, jar: map[string]string{}}
+	anna := &client{t: t, h: h, jar: map[string]string{}}
+	ben := &client{t: t, h: h, jar: map[string]string{}}
+	loc := org.do("POST", "/create", url.Values{"title": {"Geheim"}, "kind": {"text"}, "choices": {"A"}, "hide_results": {"1"}}).Header().Get("Location")
+	id := strings.Split(loc, "/")[2]
+	org.do("GET", loc, nil)
+	anna.do("POST", "/p/"+id+"/vote", url.Values{"name": {"Anna"}})
+	ben.do("POST", "/p/"+id+"/vote", url.Values{"name": {"Ben"}})
+	ab := anna.do("GET", "/p/"+id, nil).Body.String()
+	if !strings.Contains(ab, "Anna") || strings.Contains(ab, "Ben") || strings.Contains(ab, "<tfoot>") || strings.Contains(ab, "export.csv") {
+		t.Fatal("participant must only see their own entry")
+	}
+	if w := anna.do("GET", "/p/"+id+"/export.csv", nil); w.Code != 404 {
+		t.Fatalf("export visible: %d", w.Code)
+	}
+	if w := anna.do("GET", "/p/"+id+"/feed.atom", nil); w.Code != 404 {
+		t.Fatalf("feed visible: %d", w.Code)
+	}
+	ob := org.do("GET", "/p/"+id, nil).Body.String()
+	if !strings.Contains(ob, "Anna") || !strings.Contains(ob, "Ben") {
+		t.Fatal("organiser must see all entries")
+	}
+	if w := org.do("GET", "/p/"+id+"/export.csv", nil); w.Code != 200 || !strings.Contains(w.Body.String(), "Ben") {
+		t.Fatal("organiser export")
 	}
 }
