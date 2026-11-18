@@ -46,6 +46,9 @@ type Poll struct {
 	// Password hashes (see auth.go); empty means no password is set.
 	PwParticipant string
 	PwAdmin       string
+
+	// Duration of each time option in minutes; 0 = not specified, 1440 = all day.
+	Duration int
 }
 
 type Option struct {
@@ -87,7 +90,8 @@ CREATE TABLE IF NOT EXISTS polls (
 	created_at  INTEGER NOT NULL,
 	updated_at  INTEGER NOT NULL,
 	pw_participant TEXT NOT NULL DEFAULT '',
-	pw_admin       TEXT NOT NULL DEFAULT ''
+	pw_admin       TEXT NOT NULL DEFAULT '',
+	duration       INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS meta (
 	key   TEXT PRIMARY KEY,
@@ -140,14 +144,15 @@ func OpenStore(path string) (*Store, error) {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	// Databases created before access control existed lack the password columns.
-	for _, col := range []string{"pw_participant", "pw_admin"} {
+	for _, col := range []string{"pw_participant TEXT", "pw_admin TEXT", "duration INTEGER"} {
+		col, typ, _ := strings.Cut(col, " ")
 		var n int
 		if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('polls') WHERE name=?`, col).Scan(&n); err != nil {
 			db.Close()
 			return nil, fmt.Errorf("migrate: %w", err)
 		}
 		if n == 0 {
-			if _, err := db.Exec(`ALTER TABLE polls ADD COLUMN ` + col + ` TEXT NOT NULL DEFAULT ''`); err != nil {
+			if _, err := db.Exec(`ALTER TABLE polls ADD COLUMN ` + col + ` ` + typ + ` NOT NULL DEFAULT ` + map[string]string{"TEXT": "''", "INTEGER": "0"}[typ]); err != nil {
 				db.Close()
 				return nil, fmt.Errorf("migrate: %w", err)
 			}
@@ -225,9 +230,9 @@ func (s *Store) CreatePoll(p *Poll, labels []string) error {
 		return err
 	}
 	defer tx.Rollback()
-	_, err = tx.Exec(`INSERT INTO polls (id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at)
-		VALUES (?,?,?,?,?,?,?,?,?)`,
-		p.ID, p.Title, p.Description, p.Kind, p.AdminToken, b2i(p.Closed), b2i(p.AllowMaybe), now.Unix(), now.Unix())
+	_, err = tx.Exec(`INSERT INTO polls (id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,duration)
+		VALUES (?,?,?,?,?,?,?,?,?,?)`,
+		p.ID, p.Title, p.Description, p.Kind, p.AdminToken, b2i(p.Closed), b2i(p.AllowMaybe), now.Unix(), now.Unix(), p.Duration)
 	if err != nil {
 		return err
 	}
@@ -243,9 +248,9 @@ func (s *Store) GetPoll(id string) (*Poll, error) {
 	var p Poll
 	var closed, maybe int
 	var created, updated int64
-	err := s.db.QueryRow(`SELECT id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,pw_participant,pw_admin
+	err := s.db.QueryRow(`SELECT id,title,description,kind,admin_token,closed,allow_maybe,created_at,updated_at,pw_participant,pw_admin,duration
 		FROM polls WHERE id=?`, id).
-		Scan(&p.ID, &p.Title, &p.Description, &p.Kind, &p.AdminToken, &closed, &maybe, &created, &updated, &p.PwParticipant, &p.PwAdmin)
+		Scan(&p.ID, &p.Title, &p.Description, &p.Kind, &p.AdminToken, &closed, &maybe, &created, &updated, &p.PwParticipant, &p.PwAdmin, &p.Duration)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -534,9 +539,9 @@ func (s *Store) AddOptions(pollID string, labels []string) error {
 	return tx.Commit()
 }
 
-func (s *Store) UpdateSettings(pollID, title, description string, allowMaybe, closed bool) error {
-	res, err := s.db.Exec(`UPDATE polls SET title=?, description=?, allow_maybe=?, closed=?, updated_at=? WHERE id=?`,
-		title, description, b2i(allowMaybe), b2i(closed), time.Now().Unix(), pollID)
+func (s *Store) UpdateSettings(pollID, title, description string, allowMaybe, closed bool, duration int) error {
+	res, err := s.db.Exec(`UPDATE polls SET title=?, description=?, allow_maybe=?, closed=?, duration=?, updated_at=? WHERE id=?`,
+		title, description, b2i(allowMaybe), b2i(closed), duration, time.Now().Unix(), pollID)
 	if err != nil {
 		return err
 	}

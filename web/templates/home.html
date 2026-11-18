@@ -33,6 +33,7 @@
     <p class="hint">{{.T "f_dates_hint"}}</p>
     {{template "datepicker" (dpData . .Draft.DatesInit)}}
   </div>
+  <div class="only-date">{{template "durationfield" .}}</div>
   <div class="field only-text">
     <label for="choices">{{.T "f_choices"}}</label>
     <textarea id="choices" name="choices" rows="5" placeholder="{{.T "f_choices_ph"}}">{{.Draft.Choices}}</textarea>
